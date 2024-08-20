@@ -49,11 +49,17 @@ type Snake = {
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 
+// UI -> GameWorkflow to start round
 export const roundStartUpdate = defineUpdate<Round, [number]>('roundStart');
+// UI -> GameWorkflow to finish game (may produce some kind of summary or whatever)
 export const gameFinishedSignal = defineSignal('gameFinished');
 
-export const snakeChangeDirectionSignal = defineSignal<[Direction]>('snakeChangeDirection');
+// Player UI -> SnakeWorkflow to change direction
+export const snakeChangeDirectionSignal = defineSignal<[Direction]>('snakeChangeDirection');9
+
+// (Internal) Game -> SnakeWorkflow to signal round finished
 export const roundFinishedSignal = defineSignal('roundFinished');
+// (Internal) SnakeWorkflow -> Game to trigger a move
 export const snakeMoveSignal = defineSignal<[string, Direction]>('snakeMove');
 
 function growSnake(snake: Snake) {
@@ -66,13 +72,6 @@ function resetSnake(snake: Snake) {
   const headSegment = snake.segments[0];
   headSegment.length = 1;
   snake.segments = [headSegment];
-}
-
-function willHitEdge(game: Game, head: Point, direction: Direction) {
-  return (direction === 'up' && head.y === game.height) ||
-          (direction === 'down' && head.y === 0) ||
-          (direction === 'left' && head.x === 0) ||
-          (direction === 'right' && head.x === game.width);
 }
 
 function moveSnake(game: Game, snake: Snake, direction: Direction): Direction {
