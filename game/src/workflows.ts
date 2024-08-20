@@ -153,7 +153,7 @@ function snakeAt(game: Game, point: Point): Snake | undefined {
 // TODO: Ensure the random point does not currently contain a snake or an apple
 function randomEmptyPoint(game: Game): Point {
   let point = { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
-  while (snakeAt(point)) {
+  while (snakeAt(game, point)) {
     point = { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
   }
   return { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
