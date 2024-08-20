@@ -92,7 +92,6 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
     direction = headSegment.direction;
   }
 
-  // TODO: Check collision with other snakes
   let head = headSegment.start;
 
   // Create a new segment if we're changing direction or hitting an edge
@@ -117,10 +116,18 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
     head.x = (head.x == game.width) ? 0 : head.x+1;
   }
 
+  // Check if we've hit another snake
+  if (snakeAt(game, head)) {
+    // Truncate the snake to just the head
+    headSegment.length = 1;
+    snake.segments = [headSegment];
+    return snake;
+  }
+
   // Check if we've hit the apple
   // Normally after moving the head of the snake, we'll trim the tail to emulate the snake moving.
-  // If we've hit the apple, we skip trimming the tail, effectively growing the snake by one segment.
-  if (head.x === round.apple.x && head.y === round.apple.y) {
+  // If we've hit the apple, we skip trimming the tail, allowing the snake to grow by one segment.
+  if (appleAt(game, head)) {
     // We hit the apple, so create a new one.
     // TODO: Notify the UI when a new apple is created.
     // Currently the UI only knows about the original apple via the Round returned by roundStartUpdate.
@@ -138,10 +145,23 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
   return snake;
 }
 
+function appleAt(game: Game, point: Point): boolean {
+  return game.round?.apple.x === point.x && game.round?.apple.y === point.y;
+}
+
 function snakeAt(game: Game, point: Point): Snake | undefined {
   for (const snake of game.round?.snakes || []) {
     for (const segment of snake.segments) {
-      if (segment.start.x === point.x && segment.start.y === point.y) {
+      const direction = segment.direction;
+      const start = segment.start;
+
+      if (direction === "up" && point.x === start.x && point.y >= start.y && point.y < start.y + segment.length) {
+        return snake;
+      } else if (direction === "down" && point.x === start.x && point.y <= start.y && point.y > start.y - segment.length) {
+        return snake;
+      } else if (direction === "left" && point.y === start.y && point.x <= start.x && point.x > start.x - segment.length) {
+        return snake;
+      } else if (direction === "right" && point.y === start.y && point.x >= start.x && point.x < start.x + segment.length) {
         return snake;
       }
     }
@@ -150,10 +170,9 @@ function snakeAt(game: Game, point: Point): Snake | undefined {
   return undefined;
 }
 
-// TODO: Ensure the random point does not currently contain a snake or an apple
 function randomEmptyPoint(game: Game): Point {
   let point = { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
-  while (snakeAt(point)) {
+  while (appleAt(game, point) || snakeAt(game, point)) {
     point = { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
   }
   return { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
