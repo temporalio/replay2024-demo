@@ -3,7 +3,7 @@ import { GameWorkflow, roundStartUpdate, snakeChangeDirectionSignal } from './wo
 
 export async function runWorkflows(client: Client, taskQueue: string, numWorkflows: number): Promise<void> {
   const handle = await client.workflow.start(GameWorkflow, {
-    args: [{width: 10, height: 10, teams: ['red', 'blue'], snakesPerTeam: 2}],
+    args: [{width: 10, height: 10, teams: [{ name: 'red' }, { name: 'blue' }], snakesPerTeam: 2}],
     taskQueue,
     workflowId: `game-${Date.now()}`
   });
