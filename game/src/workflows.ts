@@ -81,38 +81,40 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
   let headSegment = snake.segments[0];
   let tailSegment = snake.segments[snake.segments.length-1];
 
+  const currentDirection = headSegment.direction;
+  let newDirection = direction;
+
   // You can't go back on yourself
   if (
-    (headSegment.direction === 'up' && direction === 'down') ||
-    (headSegment.direction === 'down' && direction === 'up') ||
-    (headSegment.direction === 'left' && direction === 'right') ||
-    (headSegment.direction === 'right' && direction === 'left')
+    (currentDirection === 'up' && newDirection === 'down') ||
+    (currentDirection === 'down' && newDirection === 'up') ||
+    (currentDirection === 'left' && newDirection === 'right') ||
+    (currentDirection === 'right' && newDirection === 'left')
   ) {
-    log.info("Ignoring invalid direction change", { snake: snake.id, currentDirection: headSegment.direction, newDirection: direction });
-    direction = headSegment.direction;
+    newDirection = currentDirection;
   }
 
   let head = headSegment.start;
 
   // Create a new segment if we're changing direction or hitting an edge
-  if (direction !== headSegment.direction ||
-      (direction === 'up' && head.y === game.height) ||
-      (direction === 'down' && head.y === 0) ||
-      (direction === 'left' && head.x === 0) ||
-      (direction === 'right' && head.x === game.width)) {
+  if (newDirection !== currentDirection ||
+      (newDirection === 'up' && head.y === game.height) ||
+      (newDirection === 'down' && head.y === 0) ||
+      (newDirection === 'left' && head.x === 0) ||
+      (newDirection === 'right' && head.x === game.width)) {
     headSegment = { start: { x: head.x, y: head.y }, direction, length: 1 };
     head = headSegment.start;
     snake.segments.unshift(headSegment);
   }
 
-  // Move the head segment, wrapping around if we hit the edge
-  if (direction === 'up') {
+  // Move the head segment, wrapping around if are moving past the edge
+  if (newDirection === 'up') {
     head.y = (head.y == game.height) ? 0 : head.y+1;
-  } else if (direction === 'down') {
+  } else if (newDirection === 'down') {
     head.y = (head.y == 0) ? game.height : head.y-1;
-  } else if (direction === 'left') {
+  } else if (newDirection === 'left') {
     head.x = (head.x == 0) ? game.width : head.x-1;
-  } else if (direction === 'right') {
+  } else if (newDirection === 'right') {
     head.x = (head.x == game.width) ? 0 : head.x+1;
   }
 
