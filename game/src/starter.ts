@@ -1,9 +1,9 @@
 import { Client } from '@temporalio/client';
-import { GameWorkflow, roundStartUpdate, gameTickUpdate } from './workflows';
+import { GameWorkflow, roundStartUpdate, snakeChangeDirectionSignal } from './workflows';
 
 export async function runWorkflows(client: Client, taskQueue: string, numWorkflows: number): Promise<void> {
   const handle = await client.workflow.start(GameWorkflow, {
-    args: [{width: 100, height: 100, teams: ['red', 'blue'], playersPerTeam: 2}],
+    args: [{width: 10, height: 10, teams: ['red', 'blue'], snakesPerTeam: 2}],
     taskQueue,
     workflowId: `game-${Date.now()}`
   });
@@ -14,17 +14,8 @@ export async function runWorkflows(client: Client, taskQueue: string, numWorkflo
   console.log(`Started round with snakes: ${round.snakes.map((snake) => snake.id).join(', ')}`);
 
   const snakes = round.snakes.map((snake) => client.workflow.getHandle(snake.id));
-  // await snakes[0].signal(snakeMove, 'up').then(() => snakes[0].signal(snakeMove, 'left'))
-  // await snakes[1].signal(snakeMove, 'down').then(() => snakes[1].signal(snakeMove, 'right'))
-
-  let finished = false;
-
-  while (!finished) {
-    const tick = await handle.executeUpdate(gameTickUpdate);
-    console.log(`Tick: ${JSON.stringify(tick)}`);
-    finished = tick.finished;
-  }
-  console.log(`Round ended`);
+  await snakes[0].signal(snakeChangeDirectionSignal, 'left').then(() => snakes[0].signal(snakeChangeDirectionSignal, 'up'));
+  await snakes[1].signal(snakeChangeDirectionSignal, 'right').then(() => snakes[1].signal(snakeChangeDirectionSignal, 'down'));
   
   console.log('Sending finish signal');
   await handle.signal('gameFinished');
