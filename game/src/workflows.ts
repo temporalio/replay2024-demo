@@ -7,6 +7,7 @@ import type * as activities from './activities';
 
 const SNAKE_WORK_DURATION_MS = 200;
 const SNAKE_WORKERS_PER_TEAM = 1;
+const APPLE_POINTS = 10;
 
 const { snakeWork } = proxyActivities<typeof activities>({
   startToCloseTimeout: '1 seconds',
@@ -17,6 +18,7 @@ type Game = {
   height: number;
   teams: Team[];
   snakesPerTeam: number;
+  round?: Round;
 };
 
 type Team = {
@@ -36,15 +38,12 @@ type Point = {
   y: number;
 }
 
+type Apple = Point;
+
 type Segment = {
   start: Point;
   direction: Direction;
   length: number;
-}
-
-type Apple = {
-  x: number;
-  y: number;
 }
 
 type Snake = {
@@ -68,7 +67,17 @@ export const roundFinishedSignal = defineSignal('roundFinished');
 // (Internal) SnakeWorkflow -> Game to trigger a move
 export const snakeMoveSignal = defineSignal<[string, Direction]>('snakeMove');
 
-function moveSnake(game: Game, round: Round, snake: Snake, direction: Direction): Direction {
+function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
+  const round = game.round;
+  if (!round) { 
+    throw new Error('Cannot move snake, no active round');
+  }
+
+  const snake = round?.snakes.find((snake) => snake.id === snakeId);
+  if (!snake) {
+    throw new Error('Cannot move snake, unable to find snake');
+  }
+
   let headSegment = snake.segments[0];
   let tailSegment = snake.segments[snake.segments.length-1];
 
@@ -115,7 +124,8 @@ function moveSnake(game: Game, round: Round, snake: Snake, direction: Direction)
     // We hit the apple, so create a new one.
     // TODO: Notify the UI when a new apple is created.
     // Currently the UI only knows about the original apple via the Round returned by roundStartUpdate.
-    round.apple = createApple(game);
+    round.apple = randomEmptyPoint(game);
+    snake.team.score! += APPLE_POINTS;
   } else {
     if (tailSegment.length > 1) {
       tailSegment.length--;
@@ -125,77 +135,78 @@ function moveSnake(game: Game, round: Round, snake: Snake, direction: Direction)
     }
   }
 
-  // Return the direction the snake actually moved
-  return direction;
+  return snake;
+}
+
+function snakeAt(game: Game, point: Point): Snake | undefined {
+  for (const snake of game.round?.snakes || []) {
+    for (const segment of snake.segments) {
+      if (segment.start.x === point.x && segment.start.y === point.y) {
+        return snake;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+// TODO: Ensure the random point does not currently contain a snake or an apple
+function randomEmptyPoint(game: Game): Point {
+  let point = { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
+  while (snakeAt(point)) {
+    point = { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
+  }
+  return { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
 }
 
 function createSnakes(game: Game): Snake[] {
   return game.teams.flatMap((team) => {
     return Array.from({ length: game.snakesPerTeam }).map((_, i) => {
-      const start = { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
-      return { id: `${team.name}-${i}`, team, segments: [{ start, length: 1, direction: 'up' }] };
+      return { id: `${team.name}-${i}`, team, segments: [{ start: randomEmptyPoint(game), length: 1, direction: 'up' }] };
     });
   });
-}
-
-function createApple(game: Game): Apple {
-  return { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
 }
 
 export async function GameWorkflow(game: Game): Promise<void> {
   log.info('Starting game');
 
   const gameId = workflowInfo().workflowId;
-  let gameFinished = false;
-  let roundInProgress = false;
-  let roundDuration = 0;
-  let round: Round | null = null;
-  let apple = createApple(game);
-  let snakes: Snake[] = [];
 
+  game.teams.forEach((team) => team.score = 0);
 
   setHandler(roundStartUpdate, async (duration): Promise<Round> => {
-    snakes = createSnakes(game);
+    const snakes = createSnakes(game);
 
     await Promise.all(snakes.map((snake) => startChild(SnakeWorkflow, { workflowId: snake.id, args: [gameId, snake] })));
+
+    game.round = { apple: randomEmptyPoint(game), teams: game.teams, snakes, duration };
     
-    roundDuration = duration;
-    roundInProgress = true;
-    round = {
-      duration,
-      apple,
-      teams: game.teams,
-      snakes,
-    }; 
+    return game.round;
+  }, { validator: (_) => { if (game.round) { throw new Error('Round already in progress'); } } });
 
-    return round;
-  }, { validator: (_) => { if (roundInProgress) { throw new Error('Round already in progress'); } } });
+  setHandler(snakeMoveSignal, async (id, direction) => {
+    const snake = moveSnake(game, id, direction);
 
+    log.info('Snake moved', { snake: id, direction: direction });
+  });
+
+  let gameFinished = false;
   setHandler(gameFinishedSignal, async () => {
     gameFinished = true;
   });
 
-  setHandler(snakeMoveSignal, async (id, direction) => {
-    const snake = snakes.find((snake) => snake.id === id);
-    if (!snake) {
-      log.error('Snake not found', { snake: id });
-      return;
-    }
-
-    const moveDirection = moveSnake(game, round, snake, direction);
-
-    log.info('Snake moved', { snake: id, requestedDirection: direction, movedDirection: moveDirection, segments: JSON.stringify(snake.segments) });
-  });
-
   while (true) {
     log.info('Waiting for round to start or game to finish');
-    await condition(() => gameFinished || roundInProgress);
+    await condition(() => gameFinished || game.round !== undefined);
     if (gameFinished) { break; }
-    log.info('Starting round timer');
-    await sleep(roundDuration * 1000);
+    
+    const round = game.round!;
+
+    log.info('Starting round timer', { duration: round.duration });
+    await sleep(round.duration * 1000);
     log.info('Round ended');
-    roundInProgress = false;
-    await Promise.all(snakes.map((snake) => getExternalWorkflowHandle(snake.id).signal(roundFinishedSignal)));
+
+    await Promise.all(round.snakes.map((snake) => getExternalWorkflowHandle(snake.id).signal(roundFinishedSignal)));
   }
 
   log.info('Finished game');
