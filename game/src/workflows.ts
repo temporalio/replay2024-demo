@@ -15,12 +15,18 @@ const { snakeWork } = proxyActivities<typeof activities>({
 type Game = {
   width: number;
   height: number;
-  teams: string[];
+  teams: Team[];
   snakesPerTeam: number;
 };
 
+type Team = {
+  name: string;
+  score?: number;
+}
+
 type Round = {
-  teams: string[];
+  apple: Apple;
+  teams: Team[];
   snakes: Snake[];
   duration: number;
 }
@@ -42,7 +48,7 @@ type Apple = {
 }
 
 type Snake = {
-  team: string;
+  team: Team;
   id: string;
   segments: Segment[];
 }
@@ -62,19 +68,7 @@ export const roundFinishedSignal = defineSignal('roundFinished');
 // (Internal) SnakeWorkflow -> Game to trigger a move
 export const snakeMoveSignal = defineSignal<[string, Direction]>('snakeMove');
 
-function growSnake(snake: Snake) {
-  const tailSegment = snake.segments[snake.segments.length-1];
-  // TODO: This might be against an edge...
-  tailSegment.length++;
-}
-
-function resetSnake(snake: Snake) {
-  const headSegment = snake.segments[0];
-  headSegment.length = 1;
-  snake.segments = [headSegment];
-}
-
-function moveSnake(game: Game, snake: Snake, direction: Direction): Direction {
+function moveSnake(game: Game, round: Round, snake: Snake, direction: Direction): Direction {
   let headSegment = snake.segments[0];
   let tailSegment = snake.segments[snake.segments.length-1];
 
@@ -89,9 +83,7 @@ function moveSnake(game: Game, snake: Snake, direction: Direction): Direction {
     direction = headSegment.direction;
   }
 
-  // TODO: Check collision with apple
   // TODO: Check collision with other snakes
-
   let head = headSegment.start;
 
   // Create a new segment if we're changing direction or hitting an edge
@@ -116,22 +108,32 @@ function moveSnake(game: Game, snake: Snake, direction: Direction): Direction {
     head.x = (head.x == game.width) ? 0 : head.x+1;
   }
 
-  // Shrink the tail segment as we move forward
-  if (tailSegment.length > 1) {
-    tailSegment.length--;
-  } else if (snake.segments.length > 1) {
-    // Remove the tail segment unless it's also the head segment
-    snake.segments.pop();
+  // Check if we've hit the apple
+  // Normally after moving the head of the snake, we'll trim the tail to emulate the snake moving.
+  // If we've hit the apple, we skip trimming the tail, effectively growing the snake by one segment.
+  if (head.x === round.apple.x && head.y === round.apple.y) {
+    // We hit the apple, so create a new one.
+    // TODO: Notify the UI when a new apple is created.
+    // Currently the UI only knows about the original apple via the Round returned by roundStartUpdate.
+    round.apple = createApple(game);
+  } else {
+    if (tailSegment.length > 1) {
+      tailSegment.length--;
+    } else if (snake.segments.length > 1) {
+      // Remove the tail segment unless it's also the head segment
+      snake.segments.pop();
+    }
   }
 
-  return direction
+  // Return the direction the snake actually moved
+  return direction;
 }
 
 function createSnakes(game: Game): Snake[] {
   return game.teams.flatMap((team) => {
     return Array.from({ length: game.snakesPerTeam }).map((_, i) => {
       const start = { x: Math.floor(Math.random() * game.width), y: Math.floor(Math.random() * game.height) };
-      return { id: `${team}-${i}`, team, segments: [{ start, length: 1, direction: 'up' }] };
+      return { id: `${team.name}-${i}`, team, segments: [{ start, length: 1, direction: 'up' }] };
     });
   });
 }
@@ -161,8 +163,9 @@ export async function GameWorkflow(game: Game): Promise<void> {
     roundInProgress = true;
     round = {
       duration,
+      apple,
       teams: game.teams,
-      snakes: snakes,
+      snakes,
     }; 
 
     return round;
@@ -175,12 +178,13 @@ export async function GameWorkflow(game: Game): Promise<void> {
   setHandler(snakeMoveSignal, async (id, direction) => {
     const snake = snakes.find((snake) => snake.id === id);
     if (!snake) {
-      throw new Error('Snake not found');
+      log.error('Snake not found', { snake: id });
+      return;
     }
 
-    const moveDirection = moveSnake(game, snake, direction);
+    const moveDirection = moveSnake(game, round, snake, direction);
 
-    log.info('Snake moved', { id, requestedDirection: direction, movedDirection: moveDirection, segments: JSON.stringify(snake.segments) });
+    log.info('Snake moved', { snake: id, requestedDirection: direction, movedDirection: moveDirection, segments: JSON.stringify(snake.segments) });
   });
 
   while (true) {
@@ -198,10 +202,10 @@ export async function GameWorkflow(game: Game): Promise<void> {
 }
 
 export async function SnakeWorkflow(gameId: string, snake: Snake): Promise<void> {
-  log.info('Created snake', { team: snake.team });
+  log.info('Created snake', { id: snake.id, team: snake.team.name });
 
   const game = getExternalWorkflowHandle(gameId);
-  const id = workflowInfo().workflowId;
+  const workflowId = workflowInfo().workflowId;
   let direction = snake.segments[0].direction;
 
   setHandler(snakeChangeDirectionSignal, (newDirection) => {
@@ -209,7 +213,7 @@ export async function SnakeWorkflow(gameId: string, snake: Snake): Promise<void>
       return;
     }
 
-    log.info('Requesting direction change', { team: snake.team, id, newDirection });
+    log.info('Requesting direction change', { snake: snake.id, newDirection });
     direction = newDirection;
   });
 
@@ -220,9 +224,9 @@ export async function SnakeWorkflow(gameId: string, snake: Snake): Promise<void>
   });
 
   while (!finished) {
-    log.info('Sending snake move signal', { team: snake.team, id, direction });
+    log.info('Sending snake move signal', { snake: snake.id, direction });
     const work = Array.from({ length: SNAKE_WORKERS_PER_TEAM }).map(() => snakeWork(SNAKE_WORK_DURATION_MS));
     await Promise.all(work);
-    await game.signal(snakeMoveSignal, id, direction);
+    await game.signal(snakeMoveSignal, workflowId, direction);
   }
 }
