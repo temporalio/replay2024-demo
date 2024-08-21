@@ -14,7 +14,7 @@
 		});
 		const result = await response.json();
 		debugger;
-		goto(`/${workflowId}/${runId}/round`);
+		goto(`/${workflowId}/round`);
 	};
 </script>
 

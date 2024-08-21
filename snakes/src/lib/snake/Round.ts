@@ -1,111 +1,134 @@
-import type Game from './Game';
+import { CELL_SIZE } from './constants';
 import Team from './Team';
+import type { Point, Round } from './types';
 import { random } from './utils';
 
-export default class Round {
-  private game: Game;
-  private interval: NodeJS.Timeout;
+export default class SnakeRound {
+	private interval: NodeJS.Timeout;
 
-  score = 0;
-  timeRemaining = 60;
-  pause = false;
+	context: CanvasRenderingContext2D;
 
-  apple: [number, number] = [0, 0];
-  iceCube: [number, number] = [0, 0];
+	score = 0;
+	duration = 60;
+	paused = false;
+	background = '#000000';
 
-  constructor (game: Game) {
-    this.game = game;
-    this.draw();
-    this.updateTime();
-    this.createTeams();
+	width: number;
+	height: number;
+	cellSize = CELL_SIZE;
+	gap = CELL_SIZE;
+	cellsWide: number;
+	cellsTall: number;
+	snakesPerTeam = 2;
 
-    this.interval = setInterval(() => {
-      this.run();
-    }, 1000);
-  }
+	apple: Point = { x: 0, y: 0 };
+	iceCube: Point = { x: 0, y: 0 };
 
-  run() {
-    this.updateTime();
-    if (this.timeRemaining === 0) {
-      this.end();
-    }
-  }
+	constructor(
+		cxt: CanvasRenderingContext2D,
+		round: Round,
+		width: number,
+		height: number,
+		snakesPerTeam: number
+	) {
+		this.context = cxt;
+		this.width = width * CELL_SIZE;
+		this.height = height * CELL_SIZE;
+		this.cellsWide = width;
+		this.cellsTall = height;
+		this.snakesPerTeam = snakesPerTeam;
+		this.apple = round.apple;
 
-  draw() {
-    this.drawBoard()
-    this.drawApple();
-    this.drawIceCube();
-  }
+		this.draw();
+		this.updateTime();
+		this.createTeams();
 
-  updateTime() {
-    --this.timeRemaining;
-    document.getElementById('time').innerText = this.timeRemaining.toString();
-  }
+		this.interval = setInterval(() => {
+			this.run();
+		}, 1000);
+	}
 
-  createTeams() {
-    new Team(this.game, this, "red");
-    new Team(this.game, this, "blue");
-  }
+	run() {
+		this.updateTime();
+		if (this.duration === 0) {
+			this.end();
+		}
+	}
 
-  drawGrid() {
-    for (var x = 0; x <= this.game.width; x += this.game.cellSize) {
-      this.game.context.moveTo(this.game.gap + x, 0);
-      this.game.context.lineTo(this.game.gap + x, this.game.height);
-    }
+	draw() {
+		this.drawBoard();
+		this.drawApple();
+		this.drawIceCube();
+	}
 
-    for (var y = 0; y <= this.game.height; y += this.game.cellSize) {
-        this.game.context.moveTo(0, this.game.gap + y);
-        this.game.context.lineTo(this.game.width, this.game.gap + y);
-    }
-    
-    this.game.context.strokeStyle = "#59FDA0";
-    this.game.context.lineWidth = 1;
-    this.game.context.stroke();
-  }
+	updateTime() {
+		--this.duration;
+		document.getElementById('time').innerText = this.duration.toString();
+	}
 
-  drawBoard() {
-    this.game.context.fillStyle = this.game.background;
-    this.game.context.fillRect(0, 0, this.game.width, this.game.height);
-    this.drawGrid();
-  }
+	createTeams() {
+		new Team(this, 'red');
+		new Team(this, 'blue');
+	}
 
-  drawApple() {
-    const appleSize = this.game.cellSize;
-    this.apple = [random(this.game.cellsWide), random(this.game.cellsTall)];
-    this.game.context.fillStyle = '#00FF00';
-    this.game.context.fillRect(this.apple[0] * appleSize, this.apple[1] * appleSize, appleSize, appleSize);
-  }
+	drawGrid() {
+		for (var x = 0; x <= this.width; x += this.cellSize) {
+			this.context.moveTo(this.gap + x, 0);
+			this.context.lineTo(this.gap + x, this.height);
+		}
 
-  drawImage(base: HTMLImageElement, size: number) {
-    this.game.context.drawImage(base, this.iceCube[0]*size, this.iceCube[1]*size, size * 2, size * 2)
-  }
+		for (var y = 0; y <= this.height; y += this.cellSize) {
+			this.context.moveTo(0, this.gap + y);
+			this.context.lineTo(this.width, this.gap + y);
+		}
 
-  drawIceCube() {
-    const size = this.game.cellSize;
-    this.iceCube = [random(this.game.cellsWide), random(this.game.cellsTall)];
+		this.context.strokeStyle = '#59FDA0';
+		this.context.lineWidth = 1;
+		this.context.stroke();
+	}
 
-    let base = new Image();
-    base.src = '/icecube.png';
+	drawBoard() {
+		this.context.fillStyle = this.background;
+		this.context.fillRect(0, 0, this.width, this.height);
+		this.drawGrid();
+	}
 
-    const Round = this;
-    base.onload = function(){
-      Round.drawImage(base, size);
-    }
-  }
+	drawApple() {
+		const appleSize = this.cellSize;
+		this.context.fillStyle = '#00FF00';
+		this.context.fillRect(this.apple.x * appleSize, this.apple.y * appleSize, appleSize, appleSize);
+	}
 
-  eatApple() {
-    this.clearApple()
-    this.drawApple();
-  }
+	drawImage(base: HTMLImageElement, size: number) {
+		this.context.drawImage(base, this.iceCube.x * size, this.iceCube.y * size, size * 2, size * 2);
+	}
 
-  clearApple() {
-    const appleSize = this.game.cellSize;
-    this.game.context.fillStyle = this.game.background;
-    this.game.context.fillRect(this.apple[0] * appleSize, this.apple[1] * appleSize, appleSize, appleSize);
-  }
+	drawIceCube() {
+		const size = this.cellSize;
+		this.iceCube = { x: random(this.cellsWide), y: random(this.cellsTall) };
 
-  end() {
-    clearInterval(this.interval);
-    this.pause = true;
-  }
+		let base = new Image();
+		base.src = '/icecube.png';
+
+		const Round = this;
+		base.onload = function () {
+			Round.drawImage(base, size);
+		};
+	}
+
+	eatApple() {
+		this.clearApple();
+		this.drawApple();
+	}
+
+	clearApple() {
+		const appleSize = this.cellSize;
+		this.context.fillStyle = this.background;
+		this.context.fillRect(this.apple.x * appleSize, this.apple.y * appleSize, appleSize, appleSize);
+	}
+
+	end() {
+		clearInterval(this.interval);
+		this.paused = true;
+	}
 }
