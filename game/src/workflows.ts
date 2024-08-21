@@ -45,7 +45,7 @@ type Round = {
   teams: Team[];
   snakes: Snake[];
   duration: number;
-  timeLeft?: number;
+  startedAt?: number;
 }
 
 type Point = {
@@ -297,7 +297,10 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
     const round = game.round!;
 
     log.info('Starting round timer', { duration: round.duration });
+
+    round.startedAt = Date.now();
     await sleep(round.duration * 1000);
+
     log.info('Round ended');
 
     await Promise.all(round.snakes.map((snake) => getExternalWorkflowHandle(snake.id).signal(roundFinishedSignal)));
