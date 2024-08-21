@@ -37,30 +37,10 @@ const TEMPORAL_ADDRESS = env.TEMPORAL_ADDRESS;
 const TEMPORAL_NAMESPACE = env.TEMPORAL_NAMESPACE;
 const TEMPORAL_TASK_QUEUE = env.TEMPORAL_TASK_QUEUE;
 const TEMPORAL_WORKFLOW_TYPE = env.TEMPORAL_WORKFLOW_TYPE;
-
-// export const POST: RequestHandler = async ({ request }) => {
-// 	const body = await request.json();
-// 	console.log('Body:', body);
-// 	try {
-// 		const newGame = await fetch(
-// 			`${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/workflows/${body.workflowId}`,
-// 			{
-// 				method: 'POST',
-// 				headers: {
-// 					'Content-Type': 'application/json'
-// 				},
-// 				body: JSON.stringify(body)
-// 			}
-// 		);
-// 		console.log('Started game:', newGame);
-// 	} catch (e) {
-// 		console.log('FAILED: ', e);
-// 	}
-// 	return new Response(null, { status: 200 });
-// };
+const workflowsUrl = `${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/workflows`;
 
 type GameAction = {
-	action: 'start' | 'move' | 'query';
+	action: 'startGame' | 'startRound' | 'move' | 'query';
 	workflowId: string;
 	input: GameInput;
 	numSpaces: number;
@@ -70,11 +50,13 @@ export async function POST({ request }) {
 	try {
 		const body = await request.json();
 		console.log('REQUEST: ', body);
-		const { action, workflowId, input, numSpaces } = body;
+		const { action, workflowId, duration, input, numSpaces } = body;
 
 		switch (action) {
-			case 'start':
+			case 'startGame':
 				return await startGame(input);
+			case 'startRound':
+				return await startRound(duration, workflowId);
 			case 'move':
 				return await movePlayer(workflowId, playerName, numSpaces);
 			case 'query':
@@ -102,39 +84,66 @@ type GameInput = {
 async function startGame(input: GameInput) {
 	console.log('Starting game with input:', input);
 	const workflowId = `game-${Date.now()}`;
-	const response = await fetch(
-		`${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/workflows/${workflowId}`,
-		{
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				workflowType: { name: TEMPORAL_WORKFLOW_TYPE },
-				taskQueue: { name: TEMPORAL_TASK_QUEUE },
-				input: [input]
-			})
-		}
-	);
+	const response = await fetch(`${workflowsUrl}/${workflowId}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			workflowType: { name: TEMPORAL_WORKFLOW_TYPE },
+			taskQueue: { name: TEMPORAL_TASK_QUEUE },
+			input: [input]
+		})
+	});
 
+	console.log('Start Game Response: ', response);
 	if (!response.ok) {
 		throw new Error(`HTTP error! status: ${response.status}`);
 	}
 
 	const result = await response.json();
-	return json({ workflowId, runId: result.run_id });
+	return json({ workflowId, runId: result.runId });
+}
+
+async function startRound(duration: number, workflowId: string) {
+	console.log('Starting round with duration:', duration);
+	const updateName = 'roundStart';
+	const response = await fetch(`${workflowsUrl}/${workflowId}/update/${updateName}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			namespace: TEMPORAL_NAMESPACE,
+			workflowExecution: { workflowId },
+			waitPolicy: { lifecycleStage: 'UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED' },
+			request: {
+				meta: { updateId: 'begin-round' },
+				input: {
+					name: updateName,
+					args: {
+						payloads: [30]
+					}
+				}
+			}
+		})
+	});
+
+	if (!response.ok) {
+		const error = await response.text();
+		console.log('Error: ', error);
+		throw new Error(`HTTP error! status: ${response.status}`);
+	}
+
+	const result = await response.json();
+	return json({ result });
 }
 
 async function movePlayer(workflowId: string, playerName, numSpaces) {
-	const response = await fetch(
-		`${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/workflows/${workflowId}/signal`,
-		{
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				signal_name: 'movePlayer',
-				input: [playerName, numSpaces]
-			})
-		}
-	);
+	const response = await fetch(`${workflowsUrl}/${workflowId}/signal`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			signal_name: 'movePlayer',
+			input: [playerName, numSpaces]
+		})
+	});
 
 	if (!response.ok) {
 		throw new Error(`HTTP error! status: ${response.status}`);
@@ -144,16 +153,13 @@ async function movePlayer(workflowId: string, playerName, numSpaces) {
 }
 
 async function queryGameState(workflowId: string) {
-	const response = await fetch(
-		`${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/workflows/${workflowId}/query`,
-		{
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				queryName: 'getGameState'
-			})
-		}
-	);
+	const response = await fetch(`${workflowsUrl}/${workflowId}/query`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			queryName: 'getGameState'
+		})
+	});
 
 	if (!response.ok) {
 		throw new Error(`HTTP error! status: ${response.status}`);
