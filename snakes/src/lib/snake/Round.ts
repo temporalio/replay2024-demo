@@ -101,7 +101,6 @@ export default class SnakeRound {
 	drawApple() {
 		const appleSize = this.cellSize;
 		this.context.fillStyle = '#00FF00';
-		debugger
 		this.context.fillRect(this.apple.x * appleSize, this.apple.y * appleSize, appleSize, appleSize);
 	}
 

@@ -15,7 +15,6 @@
 			body: JSON.stringify({ action: 'playerRegister', name, workflowId })
 		});
 		const result = await response.json();
-		debugger;
 	};
 
 	const playersRegister = async () => {
