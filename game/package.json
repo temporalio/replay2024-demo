@@ -24,12 +24,11 @@
     "@temporalio/client": "^1.10.2",
     "@temporalio/worker": "^1.10.2",
     "@temporalio/workflow": "^1.10.2",
-    "node-fetch": "^3.3.2",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@tsconfig/node18": "^1.0.3",
-    "@types/node": "^16.11.43",
+    "@types/node": "^22.4.2",
     "@types/yargs": "^17.0.32",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",

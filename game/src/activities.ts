@@ -1,5 +1,4 @@
 import { Snake } from './workflows';
-import fetch from 'node-fetch';
 
 export async function snakeWork(durationMs: number) {
     // sleep for duration
