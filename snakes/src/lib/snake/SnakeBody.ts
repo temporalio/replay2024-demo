@@ -9,8 +9,6 @@ export default class SnakeBody {
 	private direction: Direction;
 
 	private delay = SLOWEST;
-	private speedX = 0;
-	private speedY = 0;
 
 	private x = [0];
 	private y = [0];
