@@ -37,6 +37,8 @@ const TEMPORAL_ADDRESS = env.TEMPORAL_ADDRESS;
 const TEMPORAL_NAMESPACE = env.TEMPORAL_NAMESPACE;
 const TEMPORAL_TASK_QUEUE = env.TEMPORAL_TASK_QUEUE;
 const TEMPORAL_WORKFLOW_TYPE = env.TEMPORAL_WORKFLOW_TYPE;
+const TEMPORAL_PLAYER_WORKFLOW_TYPE = env.TEMPORAL_PLAYER_WORKFLOW_TYPE;
+
 const workflowsUrl = `${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/workflows`;
 
 type GameAction = {
@@ -49,9 +51,13 @@ type GameAction = {
 export async function POST({ request }) {
 	try {
 		const body = await request.json();
-		const { action, workflowId, duration, input, numSpaces } = body;
+		const { action, name, team, workflowId, gameWorkflowId, duration, input, numSpaces } = body;
 
 		switch (action) {
+			case 'playerRegister':
+				return await playerRegister(name);
+			case 'playerJoin':
+				return await playerJoin(workflowId, gameWorkflowId, team);
 			case 'startGame':
 				return await startGame(input);
 			case 'startRound':
@@ -79,6 +85,61 @@ type GameInput = {
 	snakesPerTeam: number;
 	teams: Team[];
 };
+
+async function playerRegister(name: string) {
+	console.log('Player Joining:', name);
+	const workflowId = `player-${name}`;
+	const response = await fetch(`${workflowsUrl}/${workflowId}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			namespace: TEMPORAL_NAMESPACE,
+			workflowType: { name: TEMPORAL_PLAYER_WORKFLOW_TYPE },
+			taskQueue: { name: TEMPORAL_TASK_QUEUE }
+		})
+	});
+
+	if (!response.ok) {
+		const error = await response.text();
+		console.log('Error: ', error);
+		throw new Error(`HTTP error! status: ${response.status}`);
+	}
+
+	const result = await response.json();
+	return json(result);
+}
+
+async function playerJoin(workflowId: string, gameWorkflowId: string, team: string) {
+	const updateName = 'playerJoinTeam';
+	const response = await fetch(`${workflowsUrl}/${workflowId}/update/${updateName}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			namespace: TEMPORAL_NAMESPACE,
+			workflowExecution: { workflowId },
+			waitPolicy: { lifecycleStage: 'UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED' },
+			request: {
+				meta: { updateId: 'join-team' },
+				input: {
+					name: updateName,
+					args: {
+						payloads: [gameWorkflowId, team]
+					}
+				}
+			}
+		})
+	});
+
+	if (!response.ok) {
+		const error = await response.text();
+		console.log('Error: ', error);
+		throw new Error(`HTTP error! status: ${response.status}`);
+	}
+
+	const result = await response.json();
+	return json({ result });
+}
+
 
 async function startGame(input: GameInput) {
 	console.log('Starting game with input:', input);

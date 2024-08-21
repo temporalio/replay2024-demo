@@ -1,6 +1,6 @@
 import { CELL_SIZE } from './constants';
-import Team from './Team';
-import type { Point, Round } from './types';
+import SnakeBody from './SnakeBody';
+import type { GameConfig, Point, Round, Team, Snake } from './types';
 import { random } from './utils';
 
 export default class SnakeRound {
@@ -23,25 +23,29 @@ export default class SnakeRound {
 
 	apple: Point = { x: 0, y: 0 };
 	iceCube: Point = { x: 0, y: 0 };
+	teams: Team[]
+	snakes: Snake[];
 
 	constructor(
 		cxt: CanvasRenderingContext2D,
 		round: Round,
-		width: number,
-		height: number,
-		snakesPerTeam: number
+		config: GameConfig,
 	) {
+		const { width, height, snakesPerTeam } = config;
 		this.context = cxt;
 		this.width = width * CELL_SIZE;
 		this.height = height * CELL_SIZE;
 		this.cellsWide = width;
 		this.cellsTall = height;
 		this.snakesPerTeam = snakesPerTeam;
+		this.duration = round.duration;
 		this.apple = round.apple;
+		this.teams = round.teams;
+		this.snakes = round.snakes;
 
 		this.draw();
 		this.updateTime();
-		this.createTeams();
+		this.addPlayers();
 
 		this.interval = setInterval(() => {
 			this.run();
@@ -66,20 +70,21 @@ export default class SnakeRound {
 		document.getElementById('time').innerText = this.duration.toString();
 	}
 
-	createTeams() {
-		new Team(this, 'red');
-		new Team(this, 'blue');
+	addPlayers() {
+		this.snakes.forEach((snake) => {
+			new SnakeBody(this, snake);
+		});
 	}
 
 	drawGrid() {
 		for (var x = 0; x <= this.width; x += this.cellSize) {
-			this.context.moveTo(this.gap + x, 0);
-			this.context.lineTo(this.gap + x, this.height);
+			this.context.moveTo(this.cellSize + x, 0);
+			this.context.lineTo(this.cellSize + x, this.height);
 		}
 
 		for (var y = 0; y <= this.height; y += this.cellSize) {
-			this.context.moveTo(0, this.gap + y);
-			this.context.lineTo(this.width, this.gap + y);
+			this.context.moveTo(0, this.cellSize + y);
+			this.context.lineTo(this.width, this.cellSize + y);
 		}
 
 		this.context.strokeStyle = '#59FDA0';
@@ -96,6 +101,7 @@ export default class SnakeRound {
 	drawApple() {
 		const appleSize = this.cellSize;
 		this.context.fillStyle = '#00FF00';
+		debugger
 		this.context.fillRect(this.apple.x * appleSize, this.apple.y * appleSize, appleSize, appleSize);
 	}
 
@@ -116,10 +122,10 @@ export default class SnakeRound {
 		};
 	}
 
-	eatApple() {
-		this.clearApple();
-		this.drawApple();
-	}
+	// eatApple() {
+	// 	this.clearApple();
+	// 	this.drawApple();
+	// }
 
 	clearApple() {
 		const appleSize = this.cellSize;

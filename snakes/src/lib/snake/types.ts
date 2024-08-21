@@ -1,8 +1,13 @@
+export type GameConfig = {
+  width: number;
+  height: number;
+  teams: string[];
+  snakesPerTeam: number;
+};
+
 export type Game = {
-	width: number;
-	height: number;
+  config: GameConfig;
 	teams: Team[];
-	snakesPerTeam: number;
 	round?: Round;
 };
 

@@ -1,11 +1,11 @@
 import type SnakeRound from './Round';
-import type SnakeTeam from './Team';
 import { SLOWEST } from './constants';
-import { random } from './utils';
+import type { Snake } from './types';
 
-export default class Snake {
+export default class SnakeBody {
 	private round: SnakeRound;
-	private team: SnakeTeam;
+	private snake: Snake
+	private color: string;
 
 	private delay = SLOWEST;
 	private speedX = 0;
@@ -14,11 +14,14 @@ export default class Snake {
 	private x = [0];
 	private y = [0];
 
-	constructor(round: SnakeRound, team: SnakeTeam) {
+	constructor(round: SnakeRound, snake: Snake) {	
 		this.round = round;
-		this.team = team;
+		this.snake = snake;
+		this.color = snake.team.name;
 
-		this.setKeyboardEvents();
+		if (snake.id === 'blue-1') {
+			this.setKeyboardEvents();
+		}
 		this.placeSnake();
 		this.run();
 	}
@@ -35,12 +38,13 @@ export default class Snake {
 	}
 
 	placeSnake() {
-		this.x = [random(this.round.cellsWide)];
-		this.y = [random(this.round.cellsTall)];
+		this.x = this.snake.segments.map((segment) => segment.start.x);
+		this.y = this.snake.segments.map((segment) => segment.start.y);
+		console.log(this.x, this.y);
 	}
 
 	draw() {
-		this.round.context.fillStyle = this.team.color;
+		this.round.context.fillStyle = this.color;
 		for (var i = 0; i < this.x.length; i++) {
 			this.round.context.fillRect(
 				this.x[i] * this.round.cellSize,
@@ -51,10 +55,13 @@ export default class Snake {
 		}
 	}
 
-	hitWall() {
+	checkForWall() {
 		const x = this.x[0];
 		const y = this.y[0];
-		return x <= 0 || x >= this.round.cellsWide || y <= 0 || y >= this.round.cellsTall;
+		if (x <= 0) this.x[0] = this.round.cellsWide - 1;
+		if (x >= this.round.cellsWide) this.x[0] = 0;
+		if (y <= 0) this.y[0] = this.round.cellsTall - 1;
+		if (y >= this.round.cellsTall) this.y[0] = 0;
 	}
 
 	stop() {
@@ -63,11 +70,7 @@ export default class Snake {
 	}
 
 	checkCollision() {
-		if (this.hitWall()) {
-			this.stop();
-			return;
-		}
-
+		this.checkForWall();
 		for (var i = 1; i < this.x.length; i++) {
 			if (this.x[0] === this.x[i] && this.y[0] === this.y[i]) {
 				this.reset();
@@ -102,13 +105,12 @@ export default class Snake {
 	}
 
 	checkEatApple() {
-		if (this.x[0] === this.round.apple.x && this.y[0] === this.round.apple.y) {
-			this.team.updateScore();
-			this.round.eatApple();
-			this.x.push(this.x[this.x.length - 1]);
-			this.y.push(this.y[this.y.length - 1]);
-			this.delay = this.delay * 0.9;
-		}
+		// if (this.x[0] === this.round.apple.x && this.y[0] === this.round.apple.y) {
+		// 	this.round.eatApple();
+		// 	this.x.push(this.x[this.x.length - 1]);
+		// 	this.y.push(this.y[this.y.length - 1]);
+		// 	this.delay = this.delay * 0.9;
+		// }
 	}
 
 	move() {

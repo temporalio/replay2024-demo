@@ -2,10 +2,10 @@
 	import { goto } from '$app/navigation';
 
 	const input = {
-		width: 10,
-		height: 10,
+		width: 50,
+		height: 25,
 		snakesPerTeam: 2,
-		teams: ['Red', 'Blue']
+		teams: ['red', 'blue']
 	};
 
 	const startGame = async () => {

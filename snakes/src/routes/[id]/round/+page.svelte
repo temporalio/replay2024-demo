@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { demoResult } from './demo';
 	import { CELL_SIZE } from '$lib/snake/constants';
 	import { page } from '$app/stores';
 
@@ -11,11 +10,8 @@
 	let canvas;
 	let socket;
 
-	let width = 50;
-	let height = 25;
-	let snakesPerTeam = 2;
-
-	const round = demoResult.result.outcome.success[0];
+	let width = 100;
+	let height = 100;
 
 	const fetchState = async () => {
 		const response = await fetch('/api/game', {
@@ -26,7 +22,10 @@
 			body: JSON.stringify({ action: 'queryState', workflowId })
 		});
 		const result = await response.json();
-		return result;
+		if (result[0]) {
+			return result[0];
+		}
+		alert('No game state found');
 	};
 
 	onMount(async () => {
@@ -35,12 +34,13 @@
 		//   gameState = state;
 		// });
 		//
-		const state = await fetchState();
-
+		const { round, config } = await fetchState();
+		width = config.width;
+		height = config.height;
 		SnakeRound = (await import('$lib/snake/Round')).default;
 		const cxt = canvas.getContext('2d');
 		if (cxt) {
-			new SnakeRound(cxt, round, width, height, snakesPerTeam);
+			new SnakeRound(cxt, round, config);
 		}
 	});
 </script>
