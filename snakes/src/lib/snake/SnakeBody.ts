@@ -1,11 +1,12 @@
 import type SnakeRound from './Round';
 import { SLOWEST } from './constants';
-import type { Snake } from './types';
+import type { Direction, Snake } from './types';
 
 export default class SnakeBody {
 	private round: SnakeRound;
 	private snake: Snake
 	private color: string;
+	private direction: Direction;
 
 	private delay = SLOWEST;
 	private speedX = 0;
@@ -18,6 +19,7 @@ export default class SnakeBody {
 		this.round = round;
 		this.snake = snake;
 		this.color = snake.team.name;
+		this.direction = snake.segments[0].direction;
 
 		if (snake.id === 'blue-1') {
 			this.setKeyboardEvents();
@@ -40,7 +42,6 @@ export default class SnakeBody {
 	placeSnake() {
 		this.x = this.snake.segments.map((segment) => segment.start.x);
 		this.y = this.snake.segments.map((segment) => segment.start.y);
-		console.log(this.x, this.y);
 	}
 
 	draw() {
@@ -114,16 +115,23 @@ export default class SnakeBody {
 	}
 
 	move() {
-		const nextX = this.x[0] + this.speedX;
-		const nextY = this.y[0] + this.speedY;
-		const xIsIn = nextX <= this.round.cellsWide && nextX >= 0;
-		const yIsIn = nextY <= this.round.cellsTall && nextY >= 0;
-		if (xIsIn && yIsIn) {
-			this.x.unshift(nextX);
-			this.y.unshift(nextY);
-			const oldX = this.x.pop();
-			const oldY = this.y.pop();
-			this.clearTail(oldX, oldY);
+		switch (this.direction) {
+			case 'up':
+				this.y[0] -= 1;
+				this.clearTail(this.x[0], this.y[0] + 1)
+				break;
+			case 'down':
+				this.y[0] += 1;
+				this.clearTail(this.x[0], this.y[0] - 1)
+				break;
+			case 'left':
+				this.x[0] -= 1;
+				this.clearTail(this.x[0] + 1, this.y[0])
+				break;
+			case 'right':
+				this.x[0] += 1;
+				this.clearTail(this.x[0] - 1, this.y[0])
+				break;
 		}
 	}
 
@@ -138,27 +146,23 @@ export default class SnakeBody {
 		document.addEventListener('keydown', function (event) {
 			switch (event.key) {
 				case 'ArrowLeft': // left arrow
-					if (Snake.speedX !== 1) {
-						Snake.speedX = -1;
-						Snake.speedY = 0;
+					if (Snake.direction !== 'left') {
+						Snake.direction = 'left';
 					}
 					break;
 				case 'ArrowUp': // up arrow
-					if (Snake.speedY !== 1) {
-						Snake.speedX = 0;
-						Snake.speedY = -1;
+					if (Snake.direction !== 'up') {
+						Snake.direction = 'up';
 					}
 					break;
 				case 'ArrowRight': // right arrow
-					if (Snake.speedX !== -1) {
-						Snake.speedX = 1;
-						Snake.speedY = 0;
+					if (Snake.direction !== 'right') {
+						Snake.direction = 'right';
 					}
 					break;
 				case 'ArrowDown': // down arrow
-					if (Snake.speedY !== -1) {
-						Snake.speedX = 0;
-						Snake.speedY = 1;
+					if (Snake.direction !== 'down') {
+						Snake.direction = 'down';
 					}
 					break;
 			}
