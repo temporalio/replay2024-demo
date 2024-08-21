@@ -2,6 +2,9 @@
 	import { onMount } from 'svelte';
 	import { demoResult } from './demo';
 	import { CELL_SIZE } from '$lib/snake/constants';
+	import { page } from '$app/stores';
+
+	$: ({ id: workflowId } = $page.params);
 
 	let SnakeRound;
 	let container;
@@ -12,14 +15,27 @@
 	let height = 25;
 	let snakesPerTeam = 2;
 
-	let gameState = { players: {}, food: { x: 0, y: 0 } };
 	const round = demoResult.result.outcome.success[0];
+
+	const fetchState = async () => {
+		const response = await fetch('/api/game', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ action: 'queryState', workflowId })
+		});
+		const result = await response.json();
+		return result;
+	};
 
 	onMount(async () => {
 		// socket = io();
 		// socket.on('gameState', (state) => {
 		//   gameState = state;
 		// });
+		//
+		const state = await fetchState();
 
 		SnakeRound = (await import('$lib/snake/Round')).default;
 		const cxt = canvas.getContext('2d');

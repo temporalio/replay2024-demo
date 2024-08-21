@@ -5,7 +5,7 @@
 		width: 10,
 		height: 10,
 		snakesPerTeam: 2,
-		teams: [{ name: 'Red' }, { name: 'Blue' }]
+		teams: ['Red', 'Blue']
 	};
 
 	const startGame = async () => {
