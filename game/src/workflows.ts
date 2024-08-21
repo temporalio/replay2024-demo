@@ -1,6 +1,6 @@
 import {
   proxyActivities, proxyLocalActivities, defineSignal, setHandler, condition, defineUpdate,
-  log, startChild, workflowInfo, sleep, getExternalWorkflowHandle
+  log, startChild, workflowInfo, sleep, getExternalWorkflowHandle, defineQuery,
 } from '@temporalio/workflow';
 
 import type * as activities from './activities';
@@ -45,6 +45,7 @@ type Round = {
   teams: Team[];
   snakes: Snake[];
   duration: number;
+  timeLeft?: number;
 }
 
 type Point = {
@@ -67,6 +68,8 @@ export type Snake = {
 }
 
 type Direction = 'up' | 'down' | 'left' | 'right';
+
+export const gameStateQuery = defineQuery<Game>('gameState');
 
 // UI -> GameWorkflow to start round
 export const roundStartUpdate = defineUpdate<Round, [number]>('roundStart');
@@ -239,6 +242,8 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
     config,
     teams: config.teams.map((name) => ({ name, players: [], score: 0 })),
   };
+
+  setHandler(gameStateQuery, () => game);
 
   setHandler(playerJoinTeamRequestSignal, async (playerId, teamName) => {
     const team = game.teams.find((team) => team.name === teamName);
