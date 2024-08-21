@@ -1,5 +1,5 @@
 import {
-  proxyActivities, defineSignal, setHandler, condition, defineUpdate,
+  proxyActivities, proxyLocalActivities, defineSignal, setHandler, condition, defineUpdate,
   log, startChild, workflowInfo, sleep, getExternalWorkflowHandle
 } from '@temporalio/workflow';
 
@@ -10,6 +10,10 @@ const SNAKE_WORKERS_PER_TEAM = 1;
 const APPLE_POINTS = 10;
 
 const { snakeWork } = proxyActivities<typeof activities>({
+  startToCloseTimeout: '1 seconds',
+});
+
+const { snakeMovedNotification } = proxyLocalActivities<typeof activities>({
   startToCloseTimeout: '1 seconds',
 });
 
@@ -56,7 +60,7 @@ type Segment = {
   length: number;
 }
 
-type Snake = {
+export type Snake = {
   team: Team;
   id: string;
   segments: Segment[];
@@ -271,6 +275,8 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
     const snake = moveSnake(game, id, direction);
 
     log.info('Snake moved', { snake: id, direction: direction });
+
+    await snakeMovedNotification(snake);
   });
 
   let gameFinished = false;

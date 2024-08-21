@@ -1,11 +1,12 @@
 import { Client } from '@temporalio/client';
+import { WorkflowIdReusePolicy } from '@temporalio/workflow';
 import { GameWorkflow, PlayerWorkflow, roundStartUpdate, snakeChangeDirectionSignal, playerWaitForRoundUpdate, playerJoinTeamUpdate } from './workflows';
 
 export async function runWorkflows(client: Client, taskQueue: string, numWorkflows: number): Promise<void> {
   // Players can be created at any time. They will wait for a game to start if one is not active.
   const playerHandles = await Promise.all(
     Array.from({ length: 4 }).map(
-      (_, i) => client.workflow.start(PlayerWorkflow, { taskQueue, workflowId: `player-${i}`})
+      (_, i) => client.workflow.start(PlayerWorkflow, { taskQueue, workflowId: `player-${i}` })
     )
   );
 
