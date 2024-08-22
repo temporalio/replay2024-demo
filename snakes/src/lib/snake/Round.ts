@@ -7,7 +7,6 @@ export default class SnakeRound {
 	private interval: NodeJS.Timeout;
 
 	context: CanvasRenderingContext2D;
-	snakeContexts: CanvasRenderingContext2D[];
 
 	score = 0;
 	duration = 60;
@@ -20,35 +19,29 @@ export default class SnakeRound {
 	gap = CELL_SIZE;
 	cellsWide: number;
 	cellsTall: number;
-	snakesPerTeam = 2;
 
 	apple: Point = { x: 0, y: 0 };
 	iceCube: Point = { x: 0, y: 0 };
 	teams: Team[]
-	snakes: Snake[];
 
 	constructor(
 		boardCxt: CanvasRenderingContext2D,
-		snakeCxts: CanvasRenderingContext2D[],
 		round: Round,
 		config: GameConfig,
 	) {
-		const { width, height, snakesPerTeam } = config;
+		const { width, height } = config;
 		this.context = boardCxt;
-		this.snakeContexts = snakeCxts;
 		this.width = width * CELL_SIZE;
 		this.height = height * CELL_SIZE;
+		this.cellSize = CELL_SIZE;
 		this.cellsWide = width;
 		this.cellsTall = height;
-		this.snakesPerTeam = snakesPerTeam;
 		this.duration = round.duration;
 		this.apple = round.apple;
 		this.teams = round.teams;
-		this.snakes = round.snakes;
 
 		this.draw();
 		this.updateTime();
-		this.addPlayers();
 
 		this.interval = setInterval(() => {
 			this.run();
@@ -65,18 +58,11 @@ export default class SnakeRound {
 	draw() {
 		this.drawBoard();
 		this.drawApple();
-		// this.drawIceCube();
 	}
 
 	updateTime() {
 		--this.duration;
 		document.getElementById('time').innerText = this.duration.toString();
-	}
-
-	addPlayers() {
-		this.snakes.forEach((snake, i) => {
-			new SnakeBody(this, this.snakeContexts[i], snake);
-		});
 	}
 
 	drawGrid() {

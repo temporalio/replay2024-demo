@@ -4,6 +4,7 @@
 
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
+import type { Direction } from '$lib/snake/types.js';
 
 const TEMPORAL_ADDRESS = env.TEMPORAL_ADDRESS;
 const TEMPORAL_NAMESPACE = env.TEMPORAL_NAMESPACE;
@@ -23,7 +24,7 @@ type GameAction = {
 export async function POST({ request }) {
 	try {
 		const body = await request.json();
-		const { action, name, team, workflowId, gameWorkflowId, duration, input, snake } = body;
+		const { action, name, team, workflowId, gameWorkflowId, duration, input, direction } = body;
 
 		switch (action) {
 			case 'playerRegister':
@@ -34,8 +35,8 @@ export async function POST({ request }) {
 				return await startGame(input);
 			case 'startRound':
 				return await startRound(duration, workflowId);
-			case 'snakeMoved':
-				return await snakeMoved(snake);
+			case 'moveSnake':
+				return await signalSnakeMove(workflowId, direction);
 			case 'queryState':
 				return await queryGameState(workflowId);
 			default:
@@ -150,7 +151,7 @@ async function startRound(duration: number, workflowId: string) {
 				input: {
 					name: updateName,
 					args: {
-						payloads: [30]
+						payloads: [duration]
 					}
 				}
 			}
@@ -167,7 +168,29 @@ async function startRound(duration: number, workflowId: string) {
 	return json({ result });
 }
 
+async function signalSnakeMove(workflowId: string, direction: Direction) {
+	const signalName = 'snakeChangeDirection'
+	const response = await fetch(`${workflowsUrl}/${workflowId}/signal/${signalName}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			workflowExecution: { workflowId },
+			signalName,
+			input: [direction]
+		})
+	});
+
+	console.log('Signal Snake Move Response: ', response);
+	if (!response.ok) {
+		throw new Error(`HTTP error! status: ${response.status}`);
+	}
+
+	const result = await response.json();
+	return json({ workflowId, runId: result.runId });
+}
+
 async function snakeMoved(snake: Snake) {
+
 	// SSE?
 }
 

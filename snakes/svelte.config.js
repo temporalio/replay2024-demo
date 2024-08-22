@@ -3,17 +3,7 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 export default {
   kit: {
-    adapter: adapter()
+    adapter: adapter(),
   },
   preprocess: vitePreprocess(),
-  vite: {
-    server: {
-      proxy: {
-        '/socket.io': {
-          target: 'ws://localhost:3000',
-          ws: true
-        }
-      }
-    }
-  }
 };

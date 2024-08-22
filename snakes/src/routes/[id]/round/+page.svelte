@@ -1,11 +1,22 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { CELL_SIZE } from '$lib/snake/constants';
 	import { page } from '$app/stores';
+	import { io, Socket } from 'socket.io-client';
+	import type { Round, Snake } from '$lib/snake/types';
+	import SnakeBody from '$lib/snake/SnakeBody';
 
 	$: ({ id: workflowId } = $page.params);
 
+	let socket;
+
+	let RoundData;
 	let SnakeRound;
+	let SnakeRed1;
+	let SnakeRed2;
+	let SnakeBlue1;
+	let SnakeBlue2;
+
 	let container;
 	let backgroundCanvas;
 	let snakeCanvas1;
@@ -15,6 +26,30 @@
 
 	let width = 100;
 	let height = 100;
+
+
+
+	function connectSocket() {
+		socket = io();
+
+		socket.on('snakeMoved', (newData) => {
+			const newSnake = newData.snake;
+			if (newSnake.id === 'red-0') {
+				SnakeRed1.redraw(newSnake);
+			} else if (newSnake.id === 'red-1') {
+				SnakeRed2.redraw(newSnake);
+			} else if (newSnake.id === 'blue-0') {
+				SnakeBlue1.redraw(newSnake);
+			} else if (newSnake.id === 'blue-1') {
+				SnakeBlue2.redraw(newSnake);
+			}
+		});
+
+		socket.on('connect_error', (error) => {
+				console.error('Socket.io connection error:', error);
+				setTimeout(connectSocket, 1000);
+		});
+	}
 
 	const fetchState = async () => {
 		const response = await fetch('/api/game', {
@@ -37,16 +72,25 @@
 		height = config.height;
 		SnakeRound = (await import('$lib/snake/Round')).default;
 		const cxt = backgroundCanvas.getContext('2d');
-		// TODO: Make this dynamic based on player count
-		const snakeCanvasCxts = [
-			snakeCanvas1.getContext('2d'),
-			snakeCanvas2.getContext('2d'),
-			snakeCanvas3.getContext('2d'),
-			snakeCanvas4.getContext('2d'),
-		];
-		if (cxt) {
-			new SnakeRound(cxt, snakeCanvasCxts, round, config);
+
+		const getSnake = (id: string) => {
+			const snake = round.snakes.find((snake: Snake) => snake.id === id);
+			return snake
 		}
+		// TODO: Make this dynamic based on player count
+
+		RoundData = new SnakeRound(cxt, round, config);
+		SnakeRed1 = new SnakeBody(RoundData, snakeCanvas1.getContext('2d'), getSnake('red-0'));
+		SnakeRed2 = new SnakeBody(RoundData, snakeCanvas2.getContext('2d'), getSnake('red-1'));
+		SnakeBlue1 = new SnakeBody(RoundData, snakeCanvas3.getContext('2d'), getSnake('blue-0'));
+		SnakeBlue2 = new SnakeBody(RoundData, snakeCanvas4.getContext('2d'), getSnake('blue-1'));
+		connectSocket();
+	});
+
+	onDestroy (() => {
+			if (socket) {
+					socket.disconnect();
+			}
 	});
 </script>
 

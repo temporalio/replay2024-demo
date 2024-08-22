@@ -15,7 +15,7 @@ import {
 
 import type * as activities from './activities';
 
-const SNAKE_WORK_DURATION_MS = 2000;
+const SNAKE_WORK_DURATION_MS = 100;
 const SNAKE_WORKERS_PER_TEAM = 1;
 const APPLE_POINTS = 10;
 
@@ -421,7 +421,7 @@ export async function SnakeWorkflow(gameId: string, snake: Snake): Promise<void>
   let direction = snake.segments[0].direction;
 
   setHandler(snakeChangeDirectionSignal, (newDirection) => {
-    if (newDirection !== direction) {
+    if (newDirection === direction) {
       return;
     }
 
@@ -436,7 +436,7 @@ export async function SnakeWorkflow(gameId: string, snake: Snake): Promise<void>
   });
 
   while (!finished) {
-    log.info('Sending snake move signal', { snake: snake.id, direction });
+    // log.info('Sending snake move signal', { snake: snake.id, direction });
     const work = Array.from({ length: SNAKE_WORKERS_PER_TEAM }).map(() => snakeWork(SNAKE_WORK_DURATION_MS));
     await Promise.all(work);
     await game.signal(snakeMoveSignal, workflowId, direction);
