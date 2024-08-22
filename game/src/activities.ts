@@ -26,7 +26,7 @@ export async function roundUpdateNotification(round: Round) {
         },
         body: JSON.stringify({
             action: 'roundUpdate',
-            round: round,
+            round: { ...round, stale: undefined },
         })
     });
 }
