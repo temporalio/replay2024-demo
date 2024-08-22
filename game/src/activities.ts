@@ -6,7 +6,7 @@ export async function snakeWork(durationMs: number) {
 }
 
 export async function snakeMovedNotification(snake: Snake) {
-    await fetch(`http://localhost:5173/api/game`, {
+    await fetch(`http://localhost:5173/api/stream`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

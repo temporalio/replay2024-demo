@@ -15,7 +15,7 @@ import {
 
 import type * as activities from './activities';
 
-const SNAKE_WORK_DURATION_MS = 200;
+const SNAKE_WORK_DURATION_MS = 2000;
 const SNAKE_WORKERS_PER_TEAM = 1;
 const APPLE_POINTS = 10;
 
