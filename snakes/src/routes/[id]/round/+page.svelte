@@ -43,18 +43,22 @@
 		height = config.height;
 		SnakeRound = (await import('$lib/snake/Round')).default;
 		const cxt = backgroundCanvas.getContext('2d');
-		const snakeCanvas1Cxt = snakeCanvas1.getContext('2d');
-		const snakeCanvas2Cxt = snakeCanvas2.getContext('2d');
-		const snakeCanvas3Cxt = snakeCanvas3.getContext('2d');
-		const snakeCanvas4Cxt = snakeCanvas4.getContext('2d');
+		// TODO: Make this dynamic based on player count
+		const snakeCanvasCxts = [
+			snakeCanvas1.getContext('2d'),
+			snakeCanvas2.getContext('2d'),
+			snakeCanvas3.getContext('2d'),
+			snakeCanvas4.getContext('2d'),
+		];
 		if (cxt) {
-			new SnakeRound(cxt, [snakeCanvas1Cxt, snakeCanvas2Cxt, snakeCanvas3Cxt, snakeCanvas4Cxt], round, config);
+			new SnakeRound(cxt, snakeCanvasCxts, round, config);
 		}
 	});
 </script>
 
 <div id="game" bind:this={container}>
 	<canvas bind:this={backgroundCanvas} width={width * CELL_SIZE} height={height * CELL_SIZE} />
+	<!-- TODO: Make this dynamic based on player count -->
 	<canvas bind:this={snakeCanvas1} width={width * CELL_SIZE} height={height * CELL_SIZE} />
 	<canvas bind:this={snakeCanvas2} width={width * CELL_SIZE} height={height * CELL_SIZE} />
 	<canvas bind:this={snakeCanvas3} width={width * CELL_SIZE} height={height * CELL_SIZE} />

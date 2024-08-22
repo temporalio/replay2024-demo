@@ -6,11 +6,14 @@ export async function snakeWork(durationMs: number) {
 }
 
 export async function snakeMovedNotification(snake: Snake) {
-    await fetch(`http://localhost:1234/snake/${snake.id}/moved`, {
+    await fetch(`http://localhost:5173/api/game`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(snake.segments),
+        body: JSON.stringify({
+            action: 'snakeMoved',
+            snake: snake,
+        })
     });
 }

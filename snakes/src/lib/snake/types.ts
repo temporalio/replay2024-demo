@@ -32,8 +32,8 @@ export type Apple = Point;
 
 export type Segment = {
 	start: Point;
-	direction: Direction;
 	length: number;
+	direction: Direction;
 };
 
 export type Snake = {

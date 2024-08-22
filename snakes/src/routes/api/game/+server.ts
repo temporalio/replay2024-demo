@@ -51,7 +51,7 @@ type GameAction = {
 export async function POST({ request }) {
 	try {
 		const body = await request.json();
-		const { action, name, team, workflowId, gameWorkflowId, duration, input, numSpaces } = body;
+		const { action, name, team, workflowId, gameWorkflowId, duration, input, snake } = body;
 
 		switch (action) {
 			case 'playerRegister':
@@ -62,8 +62,8 @@ export async function POST({ request }) {
 				return await startGame(input);
 			case 'startRound':
 				return await startRound(duration, workflowId);
-			case 'move':
-				return await movePlayer(workflowId, playerName, numSpaces);
+			case 'snakeMoved':
+				return await snakeMoved(snake);
 			case 'queryState':
 				return await queryGameState(workflowId);
 			default:
@@ -195,21 +195,8 @@ async function startRound(duration: number, workflowId: string) {
 	return json({ result });
 }
 
-async function movePlayer(workflowId: string, playerName, numSpaces) {
-	const response = await fetch(`${workflowsUrl}/${workflowId}/signal`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			signal_name: 'movePlayer',
-			input: [playerName, numSpaces]
-		})
-	});
-
-	if (!response.ok) {
-		throw new Error(`HTTP error! status: ${response.status}`);
-	}
-
-	return json({ success: true });
+async function snakeMoved(snake: Snake) {
+	// SSE?
 }
 
 async function queryGameState(workflowId: string) {

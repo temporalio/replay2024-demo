@@ -125,25 +125,14 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
   let newDirection = direction;
 
   // You can't go back on yourself
-  if (
-    (currentDirection === 'up' && newDirection === 'down') ||
-    (currentDirection === 'down' && newDirection === 'up') ||
-    (currentDirection === 'left' && newDirection === 'right') ||
-    (currentDirection === 'right' && newDirection === 'left')
-  ) {
+  if (newDirection === oppositeDirection(currentDirection)) {
     newDirection = currentDirection;
   }
 
   let head = headSegment.start;
 
   // Create a new segment if we're changing direction or hitting an edge
-  if (
-    newDirection !== currentDirection ||
-    (newDirection === 'up' && head.y === game.config.height) ||
-    (newDirection === 'down' && head.y === 0) ||
-    (newDirection === 'left' && head.x === 0) ||
-    (newDirection === 'right' && head.x === game.config.width)
-  ) {
+  if (newDirection !== currentDirection || againstAnEdge(game, head)) {
     headSegment = { start: { x: head.x, y: head.y }, direction, length: 1 };
     head = headSegment.start;
     snake.segments.unshift(headSegment);
@@ -189,38 +178,51 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
   return snake;
 }
 
+function oppositeDirection(direction: Direction): Direction {
+  if (direction === 'up') {
+    return 'down';
+  } else if (direction === 'down') {
+    return 'up';
+  } else if (direction === 'left') {
+    return 'right';
+  } else {
+    return 'left';
+  }
+}
+
+function againstAnEdge(game: Game, point: Point): boolean {
+  return point.x === 0 || point.x === game.config.width || point.y === 0 || point.y === game.config.height;
+}
+
 function appleAt(game: Game, point: Point): boolean {
   return game.round?.apple.x === point.x && game.round?.apple.y === point.y;
+}
+
+function calculateRect(segment: Segment): { x1: number, x2: number, y1: number, y2: number } {
+  const { direction, start, length } = segment;
+  let x = [];
+  let y = [];
+
+  if (direction === 'up' || direction === 'down') {
+    x = [start.x, start.x];
+    y = [start.y, start.y + (length * (direction === 'up' ? -1 : 1))];
+  } else {
+    x = [start.x, start.x + (length * (direction === 'left' ? -1 : 1))];
+    y = [start.y, start.y];
+  }
+
+  x.sort((a, b) => a - b);
+  y.sort((a, b) => a - b);
+
+  return { x1: x[0], x2: x[1], y1: y[0], y2: y[1] };
 }
 
 function snakeAt(game: Game, point: Point): Snake | undefined {
   for (const snake of game.round?.snakes || []) {
     for (const segment of snake.segments) {
-      const direction = segment.direction;
-      const start = segment.start;
+      const rect = calculateRect(segment);
 
-      if (direction === 'up' && point.x === start.x && point.y >= start.y && point.y < start.y + segment.length) {
-        return snake;
-      } else if (
-        direction === 'down' &&
-        point.x === start.x &&
-        point.y <= start.y &&
-        point.y > start.y - segment.length
-      ) {
-        return snake;
-      } else if (
-        direction === 'left' &&
-        point.y === start.y &&
-        point.x <= start.x &&
-        point.x > start.x - segment.length
-      ) {
-        return snake;
-      } else if (
-        direction === 'right' &&
-        point.y === start.y &&
-        point.x >= start.x &&
-        point.x < start.x + segment.length
-      ) {
+      if (point.x >= rect.x1 && point.x <= rect.x2 && point.y >= rect.y1 && point.y <= rect.y2) {
         return snake;
       }
     }
@@ -237,13 +239,18 @@ function randomEmptyPoint(game: Game): Point {
   return { x: Math.floor(Math.random() * game.config.width), y: Math.floor(Math.random() * game.config.height) };
 }
 
+function randomDirection(): Direction {
+  const directions: Direction[] = ['up', 'down', 'left', 'right'];
+  return directions[Math.floor(Math.random() * directions.length)];
+}
+
 function createSnakes(game: Game): Snake[] {
   return game.teams.flatMap((team) => {
     return Array.from({ length: game.config.snakesPerTeam }).map((_, i) => {
       return {
         id: `${team.name}-${i}`,
         team,
-        segments: [{ start: randomEmptyPoint(game), length: 1, direction: 'up' }],
+        segments: [{ start: randomEmptyPoint(game), length: 1, direction: randomDirection() }],
       };
     });
   });
