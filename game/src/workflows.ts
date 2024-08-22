@@ -15,16 +15,16 @@ import {
 
 import type * as activities from './activities';
 
-const SNAKE_WORK_DURATION_MS = 100;
+const SNAKE_WORK_DURATION_MS = 200;
 const SNAKE_WORKERS_PER_TEAM = 1;
 const APPLE_POINTS = 10;
 
 const { snakeWork } = proxyActivities<typeof activities>({
-  startToCloseTimeout: '3 seconds',
+  startToCloseTimeout: '1 seconds',
 });
 
 const { snakeMovedNotification, roundUpdateNotification } = proxyLocalActivities<typeof activities>({
-  startToCloseTimeout: '3 seconds',
+  startToCloseTimeout: '1 seconds',
 });
 
 type GameConfig = {
