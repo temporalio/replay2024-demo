@@ -12,7 +12,6 @@
 	let snakeCanvas2;
 	let snakeCanvas3;
 	let snakeCanvas4;
-	let socket;
 
 	let width = 100;
 	let height = 100;
@@ -33,11 +32,6 @@
 	};
 
 	onMount(async () => {
-		// socket = io();
-		// socket.on('gameState', (state) => {
-		//   gameState = state;
-		// });
-		//
 		const { round, config } = await fetchState();
 		width = config.width;
 		height = config.height;
