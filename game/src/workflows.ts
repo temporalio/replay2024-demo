@@ -162,9 +162,9 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
 
   // Check if we've hit the apple
   // Normally after moving the head of the snake, we'll trim the tail to emulate the snake moving.
-  if (appleAt(game, head)) {
+  if (appleAt(round, head)) {
     // We hit the apple, so create a new apple.
-    round.apple = randomEmptyPoint(game);
+    round.apple = randomEmptyPoint(game, round);
     snake.team.score! += APPLE_POINTS;
     round.stale = true;
 
@@ -173,7 +173,7 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
   }
 
   // Check if we've hit another snake
-  if (snakeAt(game, head)) {
+  if (snakeAt(round, head)) {
     // Truncate the snake to just the head
     headSegment.length = 1;
     snake.segments = [headSegment];
@@ -207,8 +207,8 @@ function againstAnEdge(game: Game, point: Point): boolean {
   return point.x === 0 || point.x === game.config.width || point.y === 0 || point.y === game.config.height;
 }
 
-function appleAt(game: Game, point: Point): boolean {
-  return game.round!.apple.x === point.x && game.round!.apple.y === point.y;
+function appleAt(round: Round, point: Point): boolean {
+  return round.apple.x === point.x && round.apple.y === point.y;
 }
 
 function calculateRect(segment: Segment): { x1: number, x2: number, y1: number, y2: number } {
@@ -230,8 +230,8 @@ function calculateRect(segment: Segment): { x1: number, x2: number, y1: number, 
   return { x1: x[0], x2: x[1], y1: y[0], y2: y[1] };
 }
 
-function snakeAt(game: Game, point: Point): Snake | undefined {
-  for (const snake of game.round?.snakes || []) {
+function snakeAt(round: Round, point: Point): Snake | undefined {
+  for (const snake of round.snakes || []) {
     for (const segment of snake.segments) {
       const rect = calculateRect(segment);
 
@@ -244,9 +244,9 @@ function snakeAt(game: Game, point: Point): Snake | undefined {
   return undefined;
 }
 
-function randomEmptyPoint(game: Game): Point {
+function randomEmptyPoint(game: Game, round: Round): Point {
   let point = { x: Math.floor(Math.random() * game.config.width), y: Math.floor(Math.random() * game.config.height) };
-  while (appleAt(game, point) || snakeAt(game, point)) {
+  while (appleAt(round, point) || snakeAt(round, point)) {
     point = { x: Math.floor(Math.random() * game.config.width), y: Math.floor(Math.random() * game.config.height) };
   }
   return { x: Math.floor(Math.random() * game.config.width), y: Math.floor(Math.random() * game.config.height) };
@@ -257,15 +257,16 @@ function randomDirection(): Direction {
   return directions[Math.floor(Math.random() * directions.length)];
 }
 
-function createSnakes(game: Game): Snake[] {
-  return game.teams.flatMap((team) => {
-    return Array.from({ length: game.config.snakesPerTeam }).map((_, i) => {
-      return {
+function createSnakes(game: Game, round: Round) {
+  game.teams.forEach((team) => {
+    for (let i = 0; i < game.config.snakesPerTeam; i++) {
+      const snake = {
         id: `${team.name}-${i}`,
         team,
-        segments: [{ start: randomEmptyPoint(game), length: 1, direction: randomDirection() }],
+        segments: [{ start: randomEmptyPoint(game, round), length: 1, direction: randomDirection() }],
       };
-    });
+      round.snakes.push(snake);
+    }
   });
 }
 
@@ -313,14 +314,17 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
   setHandler(
     roundStartUpdate,
     async (duration): Promise<Round> => {
-      const snakes = createSnakes(game);
+      const round: Round = { apple: { x: 0, y: 0 }, teams: game.teams, snakes: [], duration };
+      round.apple = randomEmptyPoint(game, round);
+
+      createSnakes(game, round);
 
       await Promise.all(
-        snakes.map((snake) => startChild(SnakeWorkflow, { workflowId: snake.id, args: [gameId, snake] }))
+        round.snakes.map((snake) => startChild(SnakeWorkflow, { workflowId: snake.id, args: [gameId, snake] }))
       );
-      await Promise.all(snakes.map((snake) => assignSnakeToPlayer(snake, snake.team)));
+      await Promise.all(round.snakes.map((snake) => assignSnakeToPlayer(snake, snake.team)));
 
-      game.round = { apple: randomEmptyPoint(game), teams: game.teams, snakes, duration };
+      game.round = round;
 
       return game.round;
     },
