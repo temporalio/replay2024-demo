@@ -37,7 +37,7 @@ type GameConfig = {
 type Game = {
   config: GameConfig;
   teams: Team[];
-  round?: Round;
+  round: Round | null;
 };
 
 type Team = {
@@ -272,6 +272,7 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
   const game: Game = {
     config,
     teams: config.teams.map((name) => ({ name, players: [], score: 0 })),
+    round: null,
   };
 
   setHandler(gameStateQuery, () => game);
@@ -332,7 +333,7 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
 
   while (true) {
     log.info('Waiting for round to start or game to finish');
-    await condition(() => gameFinished || game.round !== undefined);
+    await condition(() => gameFinished || game.round !== null);
     if (gameFinished) {
       break;
     }
@@ -343,6 +344,8 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
 
     round.startedAt = Date.now();
     await sleep(round.duration * 1000);
+
+    game.round = null;
 
     log.info('Round ended');
 
