@@ -56,6 +56,7 @@ type Round = {
   snakes: Snake[];
   duration: number;
   startedAt?: number;
+  finished?: boolean;
 };
 
 type Point = {
@@ -107,13 +108,22 @@ export const roundFinishedSignal = defineSignal('roundFinished');
 // (Internal) SnakeWorkflow -> Game to trigger a move
 export const snakeMoveSignal = defineSignal<[string, Direction]>('snakeMove');
 
-function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
+function roundPending(game: Game): boolean {
+  return game.round !== null && !!game.round.startedAt;
+}
+
+function roundActive(game: Game): boolean {
   const round = game.round;
-  if (!round) {
+  return round != null && !!round.startedAt && !round.finished;
+}
+
+function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
+  if (!roundActive(game)) {
     throw new Error('Cannot move snake, no active round');
   }
+  const round = game.round!;
 
-  const snake = round?.snakes.find((snake) => snake.id === snakeId);
+  const snake = round!.snakes.find((snake) => snake.id === snakeId);
   if (!snake) {
     throw new Error('Cannot move snake, unable to find snake');
   }
@@ -162,8 +172,7 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
   // If we've hit the apple, we skip trimming the tail, allowing the snake to grow by one segment.
   if (appleAt(game, head)) {
     // We hit the apple, so create a new one.
-    // TODO: Notify the UI when a new apple is created.
-    // Currently the UI only knows about the original apple via the Round returned by roundStartUpdate.
+    // TODO: Notify the UI of round update for apple and scores.
     round.apple = randomEmptyPoint(game);
     snake.team.score! += APPLE_POINTS;
   } else {
@@ -195,7 +204,7 @@ function againstAnEdge(game: Game, point: Point): boolean {
 }
 
 function appleAt(game: Game, point: Point): boolean {
-  return game.round?.apple.x === point.x && game.round?.apple.y === point.y;
+  return game.round!.apple.x === point.x && game.round!.apple.y === point.y;
 }
 
 function calculateRect(segment: Segment): { x1: number, x2: number, y1: number, y2: number } {
@@ -313,7 +322,10 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
     },
     {
       validator: (_) => {
-        if (game.round) {
+        if (roundPending(game)) {
+          throw new Error('Pending round already exists');
+        }
+        if (roundActive(game)) {
           throw new Error('Round already in progress');
         }
         game.teams.forEach((team) => {
@@ -340,7 +352,7 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
 
   while (true) {
     log.info('Waiting for round to start or game to finish');
-    await condition(() => gameFinished || game.round !== null);
+    await condition(() => gameFinished || roundPending(game));
     if (gameFinished) {
       break;
     }
@@ -351,8 +363,7 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
 
     round.startedAt = Date.now();
     await sleep(round.duration * 1000);
-
-    game.round = null;
+    round.finished = true;
 
     log.info('Round ended');
 

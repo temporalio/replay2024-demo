@@ -140,7 +140,6 @@ async function playerJoin(workflowId: string, gameWorkflowId: string, team: stri
 	return json({ result });
 }
 
-
 async function startGame(input: GameInput) {
 	console.log('Starting game with input:', input);
 	const workflowId = `game-${Date.now()}`;
