@@ -4,6 +4,7 @@ import type { Direction, Snake } from './types';
 
 export default class SnakeBody {
 	private round: SnakeRound;
+	private context: CanvasRenderingContext2D;
 	private snake: Snake
 	private color: string;
 	private direction: Direction;
@@ -13,8 +14,9 @@ export default class SnakeBody {
 	private x = [0];
 	private y = [0];
 
-	constructor(round: SnakeRound, snake: Snake) {	
+	constructor(round: SnakeRound, cxt: CanvasRenderingContext2D, snake: Snake) {	
 		this.round = round;
+		this.context = cxt;
 		this.snake = snake;
 		this.color = snake.team.name;
 		this.direction = snake.segments[0].direction;
@@ -43,9 +45,9 @@ export default class SnakeBody {
 	}
 
 	draw() {
-		this.round.context.fillStyle = this.color;
+		this.context.fillStyle = this.color;
 		for (var i = 0; i < this.x.length; i++) {
-			this.round.context.fillRect(
+			this.context.fillRect(
 				this.x[i] * this.round.cellSize,
 				this.y[i] * this.round.cellSize,
 				this.round.cellSize,
@@ -88,18 +90,7 @@ export default class SnakeBody {
 		if (x !== undefined && y !== undefined) {
 			const gridX = x * this.round.cellSize;
 			const gridY = y * this.round.cellSize;
-			this.round.context.fillStyle = this.round.background;
-			this.round.context.fillRect(gridX, gridY, this.round.cellSize, this.round.cellSize);
-
-			this.round.context.moveTo(gridX, gridY);
-			this.round.context.lineTo(gridX + this.round.cellSize, gridY);
-			this.round.context.moveTo(gridX + this.round.cellSize, gridY);
-			this.round.context.lineTo(gridX + this.round.cellSize, gridY + this.round.cellSize);
-			this.round.context.moveTo(gridX + this.round.cellSize, gridY + this.round.cellSize);
-			this.round.context.lineTo(gridX, gridY + this.round.cellSize);
-			this.round.context.moveTo(gridX + this.round.cellSize, gridY + this.round.cellSize);
-
-			this.round.context.stroke();
+			this.context.clearRect(gridX, gridY, this.round.cellSize, this.round.cellSize);
 		}
 	}
 

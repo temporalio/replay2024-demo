@@ -7,6 +7,7 @@ export default class SnakeRound {
 	private interval: NodeJS.Timeout;
 
 	context: CanvasRenderingContext2D;
+	snakeContexts: CanvasRenderingContext2D[];
 
 	score = 0;
 	duration = 60;
@@ -27,12 +28,14 @@ export default class SnakeRound {
 	snakes: Snake[];
 
 	constructor(
-		cxt: CanvasRenderingContext2D,
+		boardCxt: CanvasRenderingContext2D,
+		snakeCxts: CanvasRenderingContext2D[],
 		round: Round,
 		config: GameConfig,
 	) {
 		const { width, height, snakesPerTeam } = config;
-		this.context = cxt;
+		this.context = boardCxt;
+		this.snakeContexts = snakeCxts;
 		this.width = width * CELL_SIZE;
 		this.height = height * CELL_SIZE;
 		this.cellsWide = width;
@@ -62,7 +65,7 @@ export default class SnakeRound {
 	draw() {
 		this.drawBoard();
 		this.drawApple();
-		this.drawIceCube();
+		// this.drawIceCube();
 	}
 
 	updateTime() {
@@ -71,8 +74,8 @@ export default class SnakeRound {
 	}
 
 	addPlayers() {
-		this.snakes.forEach((snake) => {
-			new SnakeBody(this, snake);
+		this.snakes.forEach((snake, i) => {
+			new SnakeBody(this, this.snakeContexts[i], snake);
 		});
 	}
 

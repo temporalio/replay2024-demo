@@ -7,7 +7,11 @@
 
 	let SnakeRound;
 	let container;
-	let canvas;
+	let backgroundCanvas;
+	let snakeCanvas1;
+	let snakeCanvas2;
+	let snakeCanvas3;
+	let snakeCanvas4;
 	let socket;
 
 	let width = 100;
@@ -38,15 +42,23 @@
 		width = config.width;
 		height = config.height;
 		SnakeRound = (await import('$lib/snake/Round')).default;
-		const cxt = canvas.getContext('2d');
+		const cxt = backgroundCanvas.getContext('2d');
+		const snakeCanvas1Cxt = snakeCanvas1.getContext('2d');
+		const snakeCanvas2Cxt = snakeCanvas2.getContext('2d');
+		const snakeCanvas3Cxt = snakeCanvas3.getContext('2d');
+		const snakeCanvas4Cxt = snakeCanvas4.getContext('2d');
 		if (cxt) {
-			new SnakeRound(cxt, round, config);
+			new SnakeRound(cxt, [snakeCanvas1Cxt, snakeCanvas2Cxt, snakeCanvas3Cxt, snakeCanvas4Cxt], round, config);
 		}
 	});
 </script>
 
 <div id="game" bind:this={container}>
-	<canvas bind:this={canvas} width={width * CELL_SIZE} height={height * CELL_SIZE} />
+	<canvas bind:this={backgroundCanvas} width={width * CELL_SIZE} height={height * CELL_SIZE} />
+	<canvas bind:this={snakeCanvas1} width={width * CELL_SIZE} height={height * CELL_SIZE} />
+	<canvas bind:this={snakeCanvas2} width={width * CELL_SIZE} height={height * CELL_SIZE} />
+	<canvas bind:this={snakeCanvas3} width={width * CELL_SIZE} height={height * CELL_SIZE} />
+	<canvas bind:this={snakeCanvas4} width={width * CELL_SIZE} height={height * CELL_SIZE} />
 	<div id="score">
 		<div id="time" />
 		<div id="blue" />
@@ -55,7 +67,7 @@
 </div>
 
 <style>
-	#game {
+	#game, #game canvas {
 		position: absolute;
 		top: 0;
 		right: 0;
