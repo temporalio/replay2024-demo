@@ -20,11 +20,11 @@ const SNAKE_WORKERS_PER_TEAM = 1;
 const APPLE_POINTS = 10;
 
 const { snakeWork } = proxyActivities<typeof activities>({
-  startToCloseTimeout: '1 seconds',
+  startToCloseTimeout: '3 seconds',
 });
 
-const { snakeMovedNotification } = proxyLocalActivities<typeof activities>({
-  startToCloseTimeout: '1 seconds',
+const { snakeMovedNotification, roundUpdateNotification } = proxyLocalActivities<typeof activities>({
+  startToCloseTimeout: '3 seconds',
 });
 
 type GameConfig = {
@@ -50,13 +50,14 @@ type Player = {
   id: string;
 };
 
-type Round = {
+export type Round = {
   apple: Apple;
   teams: Team[];
   snakes: Snake[];
   duration: number;
   startedAt?: number;
   finished?: boolean;
+  stale?: boolean;
 };
 
 type Point = {
@@ -123,7 +124,7 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
   }
   const round = game.round!;
 
-  const snake = round!.snakes.find((snake) => snake.id === snakeId);
+  const snake = round.snakes.find((snake) => snake.id === snakeId);
   if (!snake) {
     throw new Error('Cannot move snake, unable to find snake');
   }
@@ -159,29 +160,32 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
     head.x = head.x == game.config.width ? 0 : head.x + 1;
   }
 
+  // Check if we've hit the apple
+  // Normally after moving the head of the snake, we'll trim the tail to emulate the snake moving.
+  if (appleAt(game, head)) {
+    // We hit the apple, so create a new apple.
+    round.apple = randomEmptyPoint(game);
+    snake.team.score! += APPLE_POINTS;
+    round.stale = true;
+
+    // We return now to avoid trimming the tail, allowing the snake to grow by one segment.
+    return snake;
+  }
+
   // Check if we've hit another snake
   if (snakeAt(game, head)) {
     // Truncate the snake to just the head
     headSegment.length = 1;
     snake.segments = [headSegment];
+
     return snake;
   }
-
-  // Check if we've hit the apple
-  // Normally after moving the head of the snake, we'll trim the tail to emulate the snake moving.
-  // If we've hit the apple, we skip trimming the tail, allowing the snake to grow by one segment.
-  if (appleAt(game, head)) {
-    // We hit the apple, so create a new one.
-    // TODO: Notify the UI of round update for apple and scores.
-    round.apple = randomEmptyPoint(game);
-    snake.team.score! += APPLE_POINTS;
-  } else {
-    if (tailSegment.length > 1) {
-      tailSegment.length--;
-    } else if (snake.segments.length > 1) {
-      // Remove the tail segment unless it's also the head segment
-      snake.segments.pop();
-    }
+  
+  if (tailSegment.length > 1) {
+    tailSegment.length--;
+  } else if (snake.segments.length > 1) {
+    // Remove the tail segment unless it's also the head segment
+    snake.segments.pop();
   }
 
   return snake;
@@ -339,10 +343,17 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
 
   setHandler(snakeMoveSignal, async (id, direction) => {
     const snake = moveSnake(game, id, direction);
+    const round = game.round!;
 
     log.info('Snake moved', { snake: id, direction: direction });
 
-    await snakeMovedNotification(snake);
+    let notifications = [snakeMovedNotification(snake)];
+    if (round.stale) {
+      notifications.push(roundUpdateNotification(round));
+      round.stale = false;
+    }
+
+    await Promise.all(notifications);
   });
 
   let gameFinished = false;
@@ -364,6 +375,7 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
     round.startedAt = Date.now();
     await sleep(round.duration * 1000);
     round.finished = true;
+    await roundUpdateNotification(round);
 
     log.info('Round ended');
 
@@ -450,6 +462,7 @@ export async function SnakeWorkflow(gameId: string, snake: Snake): Promise<void>
     log.info('Sending snake move signal', { snake: snake.id, direction });
     const work = Array.from({ length: SNAKE_WORKERS_PER_TEAM }).map(() => snakeWork(SNAKE_WORK_DURATION_MS));
     await Promise.all(work);
-    await game.signal(snakeMoveSignal, workflowId, direction);
+    // Chances are we receive finished while waiting for the work to complete
+    if (!finished) { await game.signal(snakeMoveSignal, workflowId, direction); }
   }
 }
