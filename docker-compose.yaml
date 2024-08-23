@@ -1,15 +1,4 @@
 services:
-  vm:
-    image: victoriametrics/victoria-metrics:v1.102.1
-    networks:
-      - demo-network
-    ports:
-      - "8428:8428"
-    command:
-      - -retentionPeriod=1d
-      - -promscrape.config=/etc/victoriametrics/scrape.yaml
-    volumes:
-      - ./scrape.yaml:/etc/victoriametrics/scrape.yaml
   postgresql:
     container_name: temporal-postgresql
     environment:
@@ -29,14 +18,24 @@ services:
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgresql
-      - PROMETHEUS_ENDPOINT=0.0.0.0:9090
     image: temporalio/auto-setup:1.24.1
     networks:
       - demo-network
     ports:
       - 7233:7233
+      - 7243:7243
     volumes:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig      
+  ui:
+    image: temporalio/ui:2.29.2
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+      - TEMPORAL_UI_PORT=8233
+    networks:
+      - demo-network
+    ports:
+      - 8233:8233
 networks:
   demo-network:
     driver: bridge

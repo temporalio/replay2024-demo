@@ -1,0 +1,4 @@
+frontend.enableUpdateWorkflowExecution:
+  - value: true
+enableUpdateWorkflowExecutionAsyncAccepted:
+  - value: true
