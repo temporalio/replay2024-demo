@@ -110,12 +110,11 @@ export const roundFinishedSignal = defineSignal('roundFinished');
 export const snakeMoveSignal = defineSignal<[string, Direction]>('snakeMove');
 
 function roundPending(game: Game): boolean {
-  return game.round !== null && !!game.round.startedAt;
+  return game.round !== null && game.round.startedAt === undefined;
 }
 
 function roundActive(game: Game): boolean {
-  const round = game.round;
-  return round != null && !!round.startedAt && !round.finished;
+  return game.round !== null && game.round.startedAt !== undefined && !game.round.finished;
 }
 
 function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
@@ -151,9 +150,9 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
 
   // Move the head segment, wrapping around if are moving past the edge
   if (newDirection === 'up') {
-    head.y = head.y == game.config.height ? 0 : head.y + 1;
+    head.y = head.y == game.config.height ? 0 : head.y - 1;
   } else if (newDirection === 'down') {
-    head.y = head.y == 0 ? game.config.height : head.y - 1;
+    head.y = head.y == 0 ? game.config.height : head.y + 1;
   } else if (newDirection === 'left') {
     head.x = head.x == 0 ? game.config.width : head.x - 1;
   } else if (newDirection === 'right') {

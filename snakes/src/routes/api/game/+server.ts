@@ -188,11 +188,6 @@ async function signalSnakeMove(workflowId: string, direction: Direction) {
 	return json({ workflowId, runId: result.runId });
 }
 
-async function snakeMoved(snake: Snake) {
-
-	// SSE?
-}
-
 async function queryGameState(workflowId: string) {
 	const queryName = 'gameState';
 	const response = await fetch(`${workflowsUrl}/${workflowId}/query/${queryName}`, {
