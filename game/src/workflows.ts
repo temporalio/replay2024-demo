@@ -150,13 +150,13 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
 
   // Move the head segment, wrapping around if are moving past the edge
   if (newDirection === 'up') {
-    head.y = head.y == game.config.height ? 0 : head.y - 1;
+    head.y = head.y <= 0 ? game.config.height : head.y - 1;
   } else if (newDirection === 'down') {
-    head.y = head.y == 0 ? game.config.height : head.y + 1;
+    head.y = head.y >= game.config.height ? 0 : head.y + 1;
   } else if (newDirection === 'left') {
-    head.x = head.x == 0 ? game.config.width : head.x - 1;
+    head.x = head.x <= 0 ? game.config.width : head.x - 1;
   } else if (newDirection === 'right') {
-    head.x = head.x == game.config.width ? 0 : head.x + 1;
+    head.x = head.x >= game.config.width ? 0 : head.x + 1;
   }
 
   // Check if we've hit the apple
