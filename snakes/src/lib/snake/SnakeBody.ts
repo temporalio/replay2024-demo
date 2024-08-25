@@ -6,19 +6,21 @@ export default class SnakeBody {
 	private round: SnakeRound;
 	private context: CanvasRenderingContext2D;
 	private color: string;
-	private direction: Direction;
 
 	constructor(round: SnakeRound, cxt: CanvasRenderingContext2D, snake: Snake) {	
 		this.round = round;
 		this.context = cxt;
 		this.snake = snake;
 		this.color = snake.team.name;
-		this.direction = snake.segments[0].direction;
 
 		if (snake.id === 'blue-1') {
 			this.setKeyboardEvents();
 		}
 		this.draw();
+	}
+
+	direction(): Direction {
+		return this.snake.segments[0].direction;
 	}
 
 	calculateRect(segment: Segment): { x: number, y: number, width: number, height: number } {
@@ -72,22 +74,22 @@ export default class SnakeBody {
 		document.addEventListener('keydown', function (event) {
 			switch (event.key) {
 				case 'ArrowLeft': // left arrow
-					if (Snake.direction !== 'left') {
+					if (Snake.direction() !== 'left') {
 						moveSnake(Snake.snake.id, 'left')
 					}
 					break;
 				case 'ArrowUp': // up arrow
-					if (Snake.direction !== 'up') {
+					if (Snake.direction() !== 'up') {
 						moveSnake(Snake.snake.id, 'up')
 					}
 					break;
 				case 'ArrowRight': // right arrow
-					if (Snake.direction !== 'right') {
+					if (Snake.direction() !== 'right') {
 						moveSnake(Snake.snake.id, 'right')
 					}
 					break;
 				case 'ArrowDown': // down arrow
-					if (Snake.direction !== 'down') {
+					if (Snake.direction() !== 'down') {
 						moveSnake(Snake.snake.id, 'down')
 					}
 					break;
