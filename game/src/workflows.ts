@@ -118,9 +118,6 @@ function roundActive(game: Game): boolean {
 }
 
 function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
-  if (!roundActive(game)) {
-    throw new Error('Cannot move snake, no active round');
-  }
   const round = game.round!;
 
   const snake = round.snakes.find((snake) => snake.id === snakeId);
@@ -142,7 +139,7 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
   let head = headSegment.start;
 
   // Create a new segment if we're changing direction or hitting an edge
-  if (newDirection !== currentDirection || againstAnEdge(game, head)) {
+  if (newDirection !== currentDirection || againstAnEdge(game, head, direction)) {
     headSegment = { start: { x: head.x, y: head.y }, direction, length: 1 };
     head = headSegment.start;
     snake.segments.unshift(headSegment);
@@ -150,13 +147,13 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
 
   // Move the head segment, wrapping around if are moving past the edge
   if (newDirection === 'up') {
-    head.y = head.y <= 0 ? game.config.height : head.y - 1;
+    head.y = head.y < 1 ? game.config.height : head.y - 1;
   } else if (newDirection === 'down') {
-    head.y = head.y >= game.config.height ? 0 : head.y + 1;
+    head.y = head.y > game.config.height ? 1 : head.y + 1;
   } else if (newDirection === 'left') {
-    head.x = head.x <= 0 ? game.config.width : head.x - 1;
+    head.x = head.x < 1 ? game.config.width : head.x - 1;
   } else if (newDirection === 'right') {
-    head.x = head.x >= game.config.width ? 0 : head.x + 1;
+    head.x = head.x > game.config.width ? 1 : head.x + 1;
   }
 
   // Check if we've hit the apple
@@ -202,8 +199,16 @@ function oppositeDirection(direction: Direction): Direction {
   }
 }
 
-function againstAnEdge(game: Game, point: Point): boolean {
-  return point.x === 0 || point.x === game.config.width || point.y === 0 || point.y === game.config.height;
+function againstAnEdge(game: Game, point: Point, direction: Direction): boolean {
+  if (direction === 'up') {
+    return point.y === 1;
+  } else if (direction === 'down') {
+    return point.y === game.config.height;
+  } else if (direction === 'left') {
+    return point.x === 1;
+  } else {
+    return point.x === game.config.width;
+  }
 }
 
 function appleAt(round: Round, point: Point): boolean {
@@ -345,6 +350,11 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
   );
 
   setHandler(snakeMoveSignal, async (id, direction) => {
+    if (!roundActive(game)) {
+      log.debug('Ignoring move signal as round is not active');
+      return;
+    }
+
     const snake = moveSnake(game, id, direction);
     const round = game.round!;
 

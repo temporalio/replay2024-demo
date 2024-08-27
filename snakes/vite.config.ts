@@ -1,6 +1,7 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { type ViteDevServer, defineConfig } from 'vite';
 import { Server } from 'socket.io';
+import { Client } from '@temporalio/client';
 
 const webSocketServer = {
 	name: 'websocket',
@@ -9,12 +10,20 @@ const webSocketServer = {
 
 		const io = new Server(server.httpServer);
 		globalThis.io = io;
+		const temporal = new Client();
+
 		io.on('connection', (socket) => {
-			socket.on('snakeMoved', (snake) => {
-				io.emit('snakeMoved', snake);
+			socket.on('snakeChangeDirection', async (id, direction) => {
+				await temporal.workflow.getHandle(id).signal('snakeChangeDirection', direction);
 			});
-			socket.on('roundUpdate', (round) => {
-				io.emit('roundUpdate', round);
+			socket.on('snakeNom', (id) => {
+				io.emit('snakeNom', id);
+			});
+			socket.on('snakeMoved', (id, segments) => {
+				io.emit('snakeMoved', id, segments);
+			});
+			socket.on('roundUpdate', (roundUpdate) => {
+				io.emit('roundUpdate', roundUpdate);
 			});
 		});
 	}

@@ -1,10 +1,8 @@
 // import { Server } from 'socket.io';
 // import { gameState, updateGameState, addPlayer, removePlayer } from '$lib/game';
 
-
-import { json, type RequestHandler } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
-import type { Direction } from '$lib/snake/types.js';
 
 const TEMPORAL_ADDRESS = env.TEMPORAL_ADDRESS;
 const TEMPORAL_NAMESPACE = env.TEMPORAL_NAMESPACE;
@@ -13,13 +11,6 @@ const TEMPORAL_WORKFLOW_TYPE = env.TEMPORAL_WORKFLOW_TYPE;
 const TEMPORAL_PLAYER_WORKFLOW_TYPE = env.TEMPORAL_PLAYER_WORKFLOW_TYPE;
 
 const workflowsUrl = `${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/workflows`;
-
-type GameAction = {
-	action: 'startGame' | 'startRound' | 'move' | 'queryState';
-	workflowId: string;
-	input: GameInput;
-	numSpaces: number;
-};
 
 export async function POST({ request }) {
 	try {
@@ -35,8 +26,6 @@ export async function POST({ request }) {
 				return await startGame(input);
 			case 'startRound':
 				return await startRound(duration, workflowId);
-			case 'moveSnake':
-				return await signalSnakeMove(workflowId, direction);
 			case 'queryState':
 				return await queryGameState(workflowId);
 			default:
@@ -165,27 +154,6 @@ async function startRound(duration: number, workflowId: string) {
 
 	const result = await response.json();
 	return json({ result });
-}
-
-async function signalSnakeMove(workflowId: string, direction: Direction) {
-	const signalName = 'snakeChangeDirection'
-	const response = await fetch(`${workflowsUrl}/${workflowId}/signal/${signalName}`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			workflowExecution: { workflowId },
-			signalName,
-			input: [direction]
-		})
-	});
-
-	console.log('Signal Snake Move Response: ', response);
-	if (!response.ok) {
-		throw new Error(`HTTP error! status: ${response.status}`);
-	}
-
-	const result = await response.json();
-	return json({ workflowId, runId: result.runId });
 }
 
 async function queryGameState(workflowId: string) {

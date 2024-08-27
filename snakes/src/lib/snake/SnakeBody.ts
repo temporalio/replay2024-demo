@@ -1,16 +1,19 @@
 import type SnakeRound from './Round';
 import type { Direction, Snake, Segment } from './types';
+import { Socket } from 'socket.io-client';
 
 export default class SnakeBody {
 	snake: Snake
+	private socket: Socket;
 	private round: SnakeRound;
 	private context: CanvasRenderingContext2D;
 	private color: string;
 
-	constructor(round: SnakeRound, cxt: CanvasRenderingContext2D, snake: Snake) {	
+	constructor(round: SnakeRound, cxt: CanvasRenderingContext2D, snake: Snake, socket: Socket) {	
 		this.round = round;
 		this.context = cxt;
 		this.snake = snake;
+		this.socket = socket;
 		this.color = snake.team.name;
 
 		if (snake.id === 'blue-1') {
@@ -33,7 +36,7 @@ export default class SnakeBody {
 		} else {
 			width = segment.length * (segment.direction === 'left' ? -1 : 1)
 		}
-		
+
 		x *= this.round.cellSize;
 		y *= this.round.cellSize;
 		width *= this.round.cellSize;
@@ -42,7 +45,7 @@ export default class SnakeBody {
 		return { x, y, width, height };
 	}
 
-	redraw(snake: Snake) {
+	redraw(segments: Segment[]) {
 		this.snake.segments.forEach((segment, index) => {
 			let { x, y, width, height } = this.calculateRect(segment);
 			this.context.clearRect(x, y, width, height);
@@ -52,7 +55,7 @@ export default class SnakeBody {
 			}
 		});
 		
-		this.snake = snake;
+		this.snake.segments = segments;
 
 		this.draw();
 	}
@@ -69,41 +72,29 @@ export default class SnakeBody {
 		});
 	}
 
+	changeDirection(direction: Direction) {
+		if (direction !== this.direction()) {
+			this.socket.emit('snakeChangeDirection', this.snake.id, direction);
+		}
+	}
+
 	setKeyboardEvents() {
 		const Snake = this;
 		document.addEventListener('keydown', function (event) {
 			switch (event.key) {
 				case 'ArrowLeft': // left arrow
-					if (Snake.direction() !== 'left') {
-						moveSnake(Snake.snake.id, 'left')
-					}
+					Snake.changeDirection('left');
 					break;
 				case 'ArrowUp': // up arrow
-					if (Snake.direction() !== 'up') {
-						moveSnake(Snake.snake.id, 'up')
-					}
+					Snake.changeDirection('up');
 					break;
 				case 'ArrowRight': // right arrow
-					if (Snake.direction() !== 'right') {
-						moveSnake(Snake.snake.id, 'right')
-					}
+					Snake.changeDirection('right');
 					break;
 				case 'ArrowDown': // down arrow
-					if (Snake.direction() !== 'down') {
-						moveSnake(Snake.snake.id, 'down')
-					}
+					Snake.changeDirection('down');
 					break;
 			}
 		});
 	}
 }
-
-const moveSnake = async (workflowId: string, direction: Direction) => {
-	fetch('/api/game', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		body: JSON.stringify({ action: 'moveSnake', workflowId, direction })
-	});
-};
