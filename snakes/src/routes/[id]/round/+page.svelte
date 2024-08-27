@@ -78,8 +78,8 @@
 		}
 		// TODO: Make this dynamic based on player count
 
-		RoundData = new SnakeRound(cxt, round, config);
 		connectSocket();
+		RoundData = new SnakeRound(cxt, round, config, socket);
 		SnakeRed1 = new SnakeBody(RoundData, snakeCanvas1.getContext('2d'), getSnake('red-0'), socket);
 		SnakeRed2 = new SnakeBody(RoundData, snakeCanvas2.getContext('2d'), getSnake('red-1'), socket);
 		SnakeBlue1 = new SnakeBody(RoundData, snakeCanvas3.getContext('2d'), getSnake('blue-0'), socket);

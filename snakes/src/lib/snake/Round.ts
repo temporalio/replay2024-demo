@@ -1,6 +1,6 @@
 import { CELL_SIZE } from './constants';
-import SnakeBody from './SnakeBody';
-import type { GameConfig, Point, Round, Team, Snake } from './types';
+import type { GameConfig, Point, Round, Team } from './types';
+import { Socket } from 'socket.io-client';
 import { random } from './utils';
 
 export default class SnakeRound {
@@ -23,11 +23,13 @@ export default class SnakeRound {
 	apple: Point = { x: 0, y: 0 };
 	iceCube: Point = { x: 0, y: 0 };
 	teams: Team[]
+	socket: Socket;
 
 	constructor(
 		boardCxt: CanvasRenderingContext2D,
 		round: Round,
 		config: GameConfig,
+		socket: Socket,
 	) {
 		const { width, height } = config;
 		this.context = boardCxt;
@@ -39,6 +41,7 @@ export default class SnakeRound {
 		this.duration = round.duration;
 		this.apple = round.apple;
 		this.teams = round.teams;
+		this.socket = socket;
 
 		this.draw();
 		this.updateTime();
@@ -46,6 +49,13 @@ export default class SnakeRound {
 		this.interval = setInterval(() => {
 			this.run();
 		}, 1000);
+
+		socket.on('roundUpdate', (update) => {
+			this.clearApple();
+			this.apple = update.apple;
+			this.drawApple();
+			this.teams = update.teams;
+		});
 	}
 
 	run() {
@@ -113,15 +123,13 @@ export default class SnakeRound {
 		};
 	}
 
-	// eatApple() {
-	// 	this.clearApple();
-	// 	this.drawApple();
-	// }
-
 	clearApple() {
 		const appleSize = this.cellSize;
 		this.context.fillStyle = this.background;
-		this.context.fillRect(this.apple.x * appleSize, this.apple.y * appleSize, appleSize, appleSize);
+		let { x, y } = this.apple;
+		x -= 1;
+		y -= 1;
+		this.context.fillRect(x * appleSize, y * appleSize, appleSize, appleSize);
 	}
 
 	end() {
