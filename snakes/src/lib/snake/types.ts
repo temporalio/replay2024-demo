@@ -37,7 +37,7 @@ export type Segment = {
 };
 
 export type Snake = {
-	team: Team;
+	team: string;
 	id: string;
 	segments: Segment[];
 };

@@ -90,7 +90,10 @@ export default class SnakeRound {
 	drawApple() {
 		const appleSize = this.cellSize;
 		this.context.fillStyle = '#00FF00';
-		this.context.fillRect(this.apple.x * appleSize, this.apple.y * appleSize, appleSize, appleSize);
+		let { x, y } = this.apple;
+		x -= 1;
+		y -= 1;
+		this.context.fillRect(x * appleSize, y * appleSize, appleSize, appleSize);
 	}
 
 	drawImage(base: HTMLImageElement, size: number) {

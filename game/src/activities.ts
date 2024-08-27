@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 
 const socket = io('http://localhost:5173');
 
-export async function snakeWork(snake: Snake, durationMs: number) {
+export async function snakeNom(snake: Snake, durationMs: number) {
     // sleep for duration
     await new Promise((resolve) => setTimeout(resolve, durationMs));
     socket.emit('snakeNom', snake.id);

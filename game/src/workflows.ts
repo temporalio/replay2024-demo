@@ -15,16 +15,16 @@ import {
 
 import type * as activities from './activities';
 
-const SNAKE_WORK_DURATION_MS = 200;
+const SNAKE_WORK_DURATION_MS = 1000;
 const SNAKE_WORKERS_PER_TEAM = 1;
 const APPLE_POINTS = 10;
 
-const { snakeWork } = proxyActivities<typeof activities>({
-  startToCloseTimeout: '1 seconds',
+const { snakeNom } = proxyActivities<typeof activities>({
+  startToCloseTimeout: '5 seconds',
 });
 
 const { snakeMovedNotification, roundUpdateNotification } = proxyLocalActivities<typeof activities>({
-  startToCloseTimeout: '1 seconds',
+  startToCloseTimeout: '5 seconds',
 });
 
 type GameConfig = {
@@ -74,8 +74,8 @@ type Segment = {
 };
 
 export type Snake = {
-  team: Team;
   id: string;
+  team: string;
   segments: Segment[];
 };
 
@@ -157,11 +157,12 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
   }
 
   // Check if we've hit the apple
-  // Normally after moving the head of the snake, we'll trim the tail to emulate the snake moving.
+  // Normally after moving the head of the snake, we'll trim the tail to emulate the snake moving.  
   if (appleAt(round, head)) {
     // We hit the apple, so create a new apple.
     round.apple = randomEmptyPoint(game, round);
-    snake.team.score! += APPLE_POINTS;
+    const team = findTeam(round, snake.team);
+    team!.score += APPLE_POINTS;
     round.stale = true;
 
     // We return now to avoid trimming the tail, allowing the snake to grow by one segment.
@@ -185,6 +186,11 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
   }
 
   return snake;
+}
+
+function findTeam(round: Round, teamName: string): Team {
+  const team = round.teams.find((team) => team.name === teamName);
+  return team!;
 }
 
 function oppositeDirection(direction: Direction): Direction {
@@ -249,11 +255,11 @@ function snakeAt(round: Round, point: Point): Snake | undefined {
 }
 
 function randomEmptyPoint(game: Game, round: Round): Point {
-  let point = { x: Math.floor(Math.random() * game.config.width), y: Math.floor(Math.random() * game.config.height) };
+  let point = { x: Math.ceil(Math.random() * game.config.width), y: Math.ceil(Math.random() * game.config.height) };
   while (appleAt(round, point) || snakeAt(round, point)) {
-    point = { x: Math.floor(Math.random() * game.config.width), y: Math.floor(Math.random() * game.config.height) };
+    point = { x: Math.ceil(Math.random() * game.config.width), y: Math.ceil(Math.random() * game.config.height) };
   }
-  return { x: Math.floor(Math.random() * game.config.width), y: Math.floor(Math.random() * game.config.height) };
+  return { x: Math.ceil(Math.random() * game.config.width), y: Math.ceil(Math.random() * game.config.height) };
 }
 
 function randomDirection(): Direction {
@@ -266,7 +272,7 @@ function createSnakes(game: Game, round: Round) {
     for (let i = 0; i < game.config.snakesPerTeam; i++) {
       const snake = {
         id: `${team.name}-${i}`,
-        team,
+        team: team.name,
         segments: [{ start: randomEmptyPoint(game, round), length: 1, direction: randomDirection() }],
       };
       round.snakes.push(snake);
@@ -283,8 +289,9 @@ function findNextPlayer(team: Team): Player {
   return nextPlayer;
 }
 
-function assignSnakeToPlayer(snake: Snake, team: Team): Promise<void> {
-  const player = findNextPlayer(team);
+function assignSnakeToPlayer(round: Round, snake: Snake): Promise<void> {
+  const team = round.teams.find((team) => team.name === snake.team);
+  const player = findNextPlayer(team!);
   const playerHandle = getExternalWorkflowHandle(player.id);
   return playerHandle.signal(playerSnakeSignal, snake.id);
 }
@@ -326,7 +333,7 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
       await Promise.all(
         round.snakes.map((snake) => startChild(SnakeWorkflow, { workflowId: snake.id, args: [gameId, snake] }))
       );
-      await Promise.all(round.snakes.map((snake) => assignSnakeToPlayer(snake, snake.team)));
+      await Promise.all(round.snakes.map((snake) => assignSnakeToPlayer(round, snake)));
 
       game.round = round;
 
@@ -357,8 +364,6 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
 
     const snake = moveSnake(game, id, direction);
     const round = game.round!;
-
-    log.info('Snake moved', { snake: id, direction: direction });
 
     let notifications = [snakeMovedNotification(snake)];
     if (round.stale) {
@@ -450,7 +455,7 @@ export async function PlayerWorkflow(): Promise<void> {
 }
 
 export async function SnakeWorkflow(gameId: string, snake: Snake): Promise<void> {
-  log.info('Created snake', { id: snake.id, team: snake.team.name });
+  log.info('Created snake', { id: snake.id, team: snake.team });
 
   const game = getExternalWorkflowHandle(gameId);
   const workflowId = workflowInfo().workflowId;
@@ -461,7 +466,6 @@ export async function SnakeWorkflow(gameId: string, snake: Snake): Promise<void>
       return;
     }
 
-    log.info('Requesting direction change', { snake: snake.id, newDirection });
     direction = newDirection;
   });
 
@@ -472,8 +476,7 @@ export async function SnakeWorkflow(gameId: string, snake: Snake): Promise<void>
   });
 
   while (!finished) {
-    // log.info('Sending snake move signal', { snake: snake.id, direction });
-    const work = Array.from({ length: SNAKE_WORKERS_PER_TEAM }).map(() => snakeWork(SNAKE_WORK_DURATION_MS));
+    const work = Array.from({ length: SNAKE_WORKERS_PER_TEAM }).map(() => snakeNom(snake, SNAKE_WORK_DURATION_MS));
     await Promise.all(work);
     // Chances are we receive finished while waiting for the work to complete
     if (!finished) { await game.signal(snakeMoveSignal, workflowId, direction); }

@@ -14,7 +14,7 @@ export default class SnakeBody {
 		this.context = cxt;
 		this.snake = snake;
 		this.socket = socket;
-		this.color = snake.team.name;
+		this.color = snake.team;
 
 		if (snake.id === 'blue-1') {
 			this.setKeyboardEvents();
@@ -30,11 +30,20 @@ export default class SnakeBody {
 		let { x, y } = segment.start;
 		let width = 1, height = 1;
 
-
-		if (segment.direction === 'up' || segment.direction === 'down') {
-			height = segment.length * (segment.direction === 'up' ? 1 : -1)
+		if (segment.direction === 'up') {
+			x -= 1;
+			y -= 1;
+			height = segment.length;
+		} else if (segment.direction === 'down') {
+			x -= 1;
+			height = -segment.length;
+		} else if (segment.direction === 'left') {
+			x -= 1;
+			y -= 1;
+			width = segment.length;
 		} else {
-			width = segment.length * (segment.direction === 'left' ? -1 : 1)
+			y -= 1;
+			width = -segment.length;
 		}
 
 		x *= this.round.cellSize;
