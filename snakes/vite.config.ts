@@ -9,8 +9,13 @@ const webSocketServer = {
 
 		const io = new Server(server.httpServer);
 		globalThis.io = io;
-		io.on('connection', (connection) => {
-			connection.emit('eventFromServer', '✅ Connected');
+		io.on('connection', (socket) => {
+			socket.on('snakeMoved', (snake) => {
+				io.emit('snakeMoved', snake);
+			});
+			socket.on('roundUpdate', (round) => {
+				io.emit('roundUpdate', round);
+			});
 		});
 	}
 };

@@ -32,8 +32,7 @@
 	function connectSocket() {
 		socket = io();
 
-		socket.on('snakeMoved', (newData) => {
-			const newSnake = newData.snake;
+		socket.on('snakeMoved', (newSnake) => {
 			if (newSnake.id === 'red-0') {
 				SnakeRed1.redraw(newSnake);
 			} else if (newSnake.id === 'red-1') {

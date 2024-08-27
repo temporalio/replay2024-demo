@@ -24,7 +24,7 @@
     "@temporalio/client": "^1.10.2",
     "@temporalio/worker": "^1.10.2",
     "@temporalio/workflow": "^1.10.2",
-    "undici": "^6.19.8",
+    "socket.io-client": "^4.7.5",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
