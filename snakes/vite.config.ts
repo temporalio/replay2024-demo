@@ -14,7 +14,11 @@ const webSocketServer = {
 
 		io.on('connection', (socket) => {
 			socket.on('snakeChangeDirection', async (id, direction) => {
-				await temporal.workflow.getHandle(id).signal('snakeChangeDirection', direction);
+				try {
+					await temporal.workflow.getHandle(id).signal('snakeChangeDirection', direction);
+				} catch (err) {
+					console.error(err);
+				}
 			});
 			socket.on('snakeNom', (id) => {
 				io.emit('snakeNom', id);
