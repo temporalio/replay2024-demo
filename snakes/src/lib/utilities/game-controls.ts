@@ -9,8 +9,13 @@ export const startGame = async () => {
   await terminateGame();
   await wait(1000)
   const workflowId = await startNewGame();
-  debugger
   return workflowId;
+}
+
+export const startTestRound = async (workflowId: string) => {
+  await playersRegister(workflowId);
+  await playersJoin(workflowId);
+  return await startRound(workflowId);
 }
 
 export const startDemoGame = async () => {
@@ -89,7 +94,7 @@ const startRound = async (workflowId: string) => {
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ action: 'startRound', duration: 10, workflowId })
+    body: JSON.stringify({ action: 'startRound', duration: 60, workflowId })
   });
   const { result } = await response.json();
   return { result, workflowId };

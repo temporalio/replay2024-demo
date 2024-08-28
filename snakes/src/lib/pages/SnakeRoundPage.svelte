@@ -3,11 +3,13 @@
 	import { CELL_SIZE } from '$lib/snake/constants';
 	import { page } from '$app/stores';
 	import { io, Socket } from 'socket.io-client';
-	import type { Snake } from '$lib/snake/types';
+	import type { Snake, Team } from '$lib/snake/types';
 	import SnakeBody from '$lib/snake/SnakeBody';
 
 	$: ({ id: workflowId } = $page.params);
 
+	export let isDemo = false;
+	
 	let socket: Socket;
 
 	let RoundData;
@@ -26,6 +28,11 @@
 
 	let width = 100;
 	let height = 100;
+  let roundOver = false;
+  let demoInterval;
+
+	let redScore = 0;
+	let blueScore = 0;
 
 	function connectSocket() {
 		socket = io();
@@ -40,6 +47,16 @@
 			} else if (id === 'blue-1') {
 				SnakeBlue2.redraw(segments);
 			}
+		});
+
+		socket.on('roundUpdate', (update) => {
+			redScore = update.teams.find((team: Team) => team.name === 'red')?.score || 0;
+			blueScore = update.teams.find((team: Team) => team.name === 'blue')?.score || 0;
+      if (update?.finished) {
+        roundOver = true;
+        clearInterval(demoInterval);
+        demoInterval = null;
+      }
 		});
 
 		socket.on('connect_error', (error) => {
@@ -65,10 +82,18 @@
 
 	onMount(async () => {
 		const { round, config } = await fetchState();
+		if (round.finished) {
+			roundOver = true;
+		}
 		width = config.width;
 		height = config.height;
 		SnakeRound = (await import('$lib/snake/Round')).default;
 		const cxt = backgroundCanvas.getContext('2d');
+
+		if (isDemo) {
+			demoInterval = setInterval(moveRandomSnake, 50);
+		}
+
 
 		const getSnake = (id: string) => {
 			const snake = round.snakes.find((snake: Snake) => snake.id === id);
@@ -84,13 +109,36 @@
 		SnakeBlue2 = new SnakeBody(RoundData, snakeCanvas4.getContext('2d'), getSnake('blue-1'), socket);
 	});
 
+	const moveRandomSnake = () => {
+    const snakes = ['red-0', 'red-1', 'blue-0', 'blue-1'];
+    const direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];
+    const snake = snakes[Math.floor(Math.random() * snakes.length)];
+    socket.emit('snakeChangeDirection', snake, direction);
+  }
+
 	onDestroy (() => {
 		if (socket) {
 				socket.disconnect();
 		}
+		clearInterval(demoInterval);
+    demoInterval = null;
 	});
 </script>
 
+
+<div class="flex flex-col items-center justify-center">
+	{#if isDemo}
+		<h2 class="retro">Demo</h2>
+	{/if}
+  {#if roundOver}
+    <h2 class="retro">Round Over</h2>
+		{#if isDemo}
+			<p class="retro"><a class="text-white" href={`/`}>&larr; Back to Home</a></p>
+		{:else}
+			<p class="retro"><a class="text-white" href={`/${workflowId}/lobby`}>&larr; Back to Lobby</a></p>
+		{/if}
+  {/if}
+</div>
 <div id="game" bind:this={container}>
 	<canvas bind:this={backgroundCanvas} width={width * CELL_SIZE} height={height * CELL_SIZE} />
 	<!-- TODO: Make this dynamic based on player count -->
@@ -98,43 +146,36 @@
 	<canvas bind:this={snakeCanvas2} width={width * CELL_SIZE} height={height * CELL_SIZE} />
 	<canvas bind:this={snakeCanvas3} width={width * CELL_SIZE} height={height * CELL_SIZE} />
 	<canvas bind:this={snakeCanvas4} width={width * CELL_SIZE} height={height * CELL_SIZE} />
-	<div id="score">
-		<div id="time" />
-		<div id="blue" />
-		<div id="red" />
-	</div>
+</div>
+<div id="score">
+	<div class="retro-lite" id="time" />
+	<div class="retro-lite" id="blue">{blueScore}</div>
+	<div class="retro-lite" id="red">{redScore}</div>
 </div>
 
-<style>
+<style lang="postcss">
 	#game, #game canvas {
 		position: absolute;
 		top: 0;
-		right: 0;
-		width: 100vw;
+		left: 0;
+		width: 95vw;
 		height: 100vh;
 		overflow: hidden;
 	}
 
 	#score {
-		position: absolute;
-		top: 0;
-		right: 0;
-		padding: 10px;
-		font-size: 36px;
-		font-weight: bold;
-		text-align: center;
-		background: rgba(0, 0, 0, 0.5);
+		@apply absolute top-0 right-0 w-[5vw] flex flex-col gap-0 text-3xl text-center text-white;
 	}
 
 	#time {
-		color: white;
+		@apply bg-white py-5 text-black;
 	}
 
 	#blue {
-		color: blue;
+		@apply bg-[blue] py-5;
 	}
 
 	#red {
-		color: red;
+		@apply bg-[red] py-5;
 	}
 </style>

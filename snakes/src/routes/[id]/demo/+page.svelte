@@ -1,6 +1,5 @@
 <script>
-	import DemoRoundPage from "$lib/pages/DemoRoundPage.svelte";
+	import SnakeRoundPage from "$lib/pages/SnakeRoundPage.svelte";
 </script>
 
-<h2>Demo</h2>
-<DemoRoundPage />
+<SnakeRoundPage isDemo />

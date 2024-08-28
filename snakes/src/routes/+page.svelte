@@ -42,9 +42,9 @@
 </svelte:head>
 
 <section >
-	<h1>Snakes</h1>
+	<h1 class="retro">Snakes</h1>
 	{#if loading}
-		<h2>Loading Game...</h2>
+		<h2 class="retro">Loading Game...</h2>
 	{:else}
 	<div class="flex flex-col gap-4">
 		<button on:click={beginGame}>Start New Game</button>

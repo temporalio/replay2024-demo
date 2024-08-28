@@ -21,6 +21,7 @@ export type Round = {
 	teams: Team[];
 	snakes: Snake[];
 	duration: number;
+	finished: boolean;
 };
 
 export type Point = {

@@ -12,6 +12,7 @@ export default class SnakeRound {
 	duration = 60;
 	paused = false;
 	background = '#000000';
+	finished = false;
 
 	width: number;
 	height: number;
@@ -38,13 +39,15 @@ export default class SnakeRound {
 		this.cellSize = CELL_SIZE;
 		this.cellsWide = width;
 		this.cellsTall = height;
-		this.duration = round.duration;
+		this.duration = round.finished ? 0 : round.duration;
 		this.apple = round.apple;
 		this.teams = round.teams;
 		this.socket = socket;
+		this.finished = round.finished;
+
+		document.getElementById('time').innerText = this.duration.toString();
 
 		this.draw();
-		this.updateTime();
 
 		this.interval = setInterval(() => {
 			this.run();
@@ -59,9 +62,10 @@ export default class SnakeRound {
 	}
 
 	run() {
-		this.updateTime();
-		if (this.duration === 0) {
+		if (this.duration === 0 || this.finished) {
 			this.end();
+		} else {
+			this.updateTime();
 		}
 	}
 
@@ -134,6 +138,5 @@ export default class SnakeRound {
 
 	end() {
 		clearInterval(this.interval);
-		this.paused = true;
 	}
 }
