@@ -14,5 +14,5 @@ export async function snakeMovedNotification(snake: Snake) {
 }
 
 export async function roundUpdateNotification(round: Round) {
-    socket.emit('roundUpdate', { apple: round.apple, teams: round.teams });
+    socket.emit('roundUpdate', { apple: round.apple, teams: round.teams, finished: round.finished });
 }
