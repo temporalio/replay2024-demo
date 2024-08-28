@@ -161,12 +161,10 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
   if (appleAt(round, head)) {
     // We hit the apple, so create a new apple.
     round.apple = randomEmptyPoint(game, round);
+    tailSegment.length += 1;
     const team = findTeam(round, snake.team);
     team!.score += APPLE_POINTS;
     round.stale = true;
-
-    // We return now to avoid trimming the tail, allowing the snake to grow by one segment.
-    return snake;
   }
 
   // // Check if we've hit another snake
@@ -308,7 +306,9 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
     round: null,
   };
 
-  setHandler(gameStateQuery, () => game);
+  setHandler(gameStateQuery, () => {
+    return game
+  });
 
   setHandler(playerJoinTeamRequestSignal, async (playerId, teamName) => {
     const team = game.teams.find((team) => team.name === teamName);
