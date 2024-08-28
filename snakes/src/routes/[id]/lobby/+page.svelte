@@ -63,7 +63,7 @@
 </svelte:head>
 
 <section>
-	<h1>Snakes</h1>
+	<h1>Lobby</h1>
 	<div class="flex flex-col gap-4 justify-center">
 		<button on:click={playersRegister}>Players Register</button>
 		<button on:click={playersJoin}>Players Join</button>

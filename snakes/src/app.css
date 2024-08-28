@@ -105,7 +105,7 @@ button:focus:not(:focus-visible) {
 
 /* Custom CSS */
 
-h1 {
+h1, h2 {
 	font-family: 'VT323', 'Courier New', monospace; /* Retro computer font */
 	font-size: 3rem;
 	color: #ff00ff; /* Neon pink */
@@ -121,7 +121,11 @@ h1 {
 	z-index: 1;
 }
 
-h1::before {
+h2 {
+	font-size: 2rem;
+}
+
+h1::before, h2::before {
 	content: attr(data-text);
 	position: absolute;
 	left: 2px;
@@ -130,7 +134,7 @@ h1::before {
 	z-index: -1;
 }
 
-h1::after {
+h1::after, h2::after {
 	content: attr(data-text);
 	position: absolute;
 	left: -2px;

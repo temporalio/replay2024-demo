@@ -11,19 +11,22 @@ const TEMPORAL_WORKFLOW_TYPE = env.TEMPORAL_WORKFLOW_TYPE;
 const TEMPORAL_PLAYER_WORKFLOW_TYPE = env.TEMPORAL_PLAYER_WORKFLOW_TYPE;
 
 const workflowsUrl = `${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/workflows`;
+const batchUrl = `${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/batch-operations`;
 
 export async function POST({ request }) {
 	try {
 		const body = await request.json();
-		const { action, name, team, workflowId, gameWorkflowId, duration, input, direction } = body;
+		const { action, name, team, workflowId, gameWorkflowId, duration, input } = body;
 
 		switch (action) {
+			case 'terminateGame':
+				return await terminateGame();
+			case 'startGame':
+				return await startGame(input);
 			case 'playerRegister':
 				return await playerRegister(name);
 			case 'playerJoin':
 				return await playerJoin(workflowId, gameWorkflowId, team);
-			case 'startGame':
-				return await startGame(input);
 			case 'startRound':
 				return await startRound(duration, workflowId);
 			case 'queryState':
@@ -47,6 +50,52 @@ type GameInput = {
 	snakesPerTeam: number;
 	teams: Team[];
 };
+
+async function terminateGame() {
+	const jobId = Date.now().toString();
+	const response = await fetch(`${batchUrl}/${jobId}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			namespace: TEMPORAL_NAMESPACE,
+			jobId,
+			visibilityQuery: "ExecutionStatus='Running'",
+			reason: 'Game Over',
+			terminationOperation: { },
+		})
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		console.log("NOT TERMINATING!",  text)
+		throw new Error(`HTTP error! status: ${response.status}`);
+	}
+
+	const result = await response.json();
+	return json({ result });
+}
+
+async function startGame(input: GameInput) {
+	const workflowId = 'SnakeGame';
+	const response = await fetch(`${workflowsUrl}/${workflowId}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			workflowType: { name: TEMPORAL_WORKFLOW_TYPE },
+			taskQueue: { name: TEMPORAL_TASK_QUEUE },
+			input: [input]
+		})
+	});
+
+	if (!response.ok) {
+		const error = await response.text();
+		console.log('Error Starting Game: ', error);
+		throw new Error(`HTTP error! status: ${response.status}`);
+	}
+
+	const result = await response.json();
+	return json({ workflowId, runId: result.runId });
+}
 
 async function playerRegister(name: string) {
 	console.log('Player Joining:', name);
@@ -102,30 +151,7 @@ async function playerJoin(workflowId: string, gameWorkflowId: string, team: stri
 	return json({ result });
 }
 
-async function startGame(input: GameInput) {
-	console.log('Starting game with input:', input);
-	const workflowId = `game-${Date.now()}`;
-	const response = await fetch(`${workflowsUrl}/${workflowId}`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			workflowType: { name: TEMPORAL_WORKFLOW_TYPE },
-			taskQueue: { name: TEMPORAL_TASK_QUEUE },
-			input: [input]
-		})
-	});
-
-	console.log('Start Game Response: ', response);
-	if (!response.ok) {
-		throw new Error(`HTTP error! status: ${response.status}`);
-	}
-
-	const result = await response.json();
-	return json({ workflowId, runId: result.runId });
-}
-
 async function startRound(duration: number, workflowId: string) {
-	console.log('Starting round with duration:', duration);
 	const updateName = 'roundStart';
 	const response = await fetch(`${workflowsUrl}/${workflowId}/update/${updateName}`, {
 		method: 'POST',
