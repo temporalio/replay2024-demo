@@ -140,7 +140,7 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
 
   // Create a new segment if we're changing direction or hitting an edge
   if (newDirection !== currentDirection || againstAnEdge(game, head, direction)) {
-    headSegment = { start: { x: head.x, y: head.y }, direction, length: 1 };
+    headSegment = { start: { x: head.x, y: head.y }, direction, length: 0 };
     head = headSegment.start;
     snake.segments.unshift(headSegment);
   }
@@ -169,20 +169,21 @@ function moveSnake(game: Game, snakeId: string, direction: Direction): Snake {
     return snake;
   }
 
-  // Check if we've hit another snake
-  if (snakeAt(round, head)) {
-    // Truncate the snake to just the head
-    headSegment.length = 1;
-    snake.segments = [headSegment];
+  // // Check if we've hit another snake
+  // if (snakeAt(round, head)) {
+  //   // Truncate the snake to just the head
+  //   headSegment.length = 1;
+  //   snake.segments = [headSegment];
 
-    return snake;
-  }
-  
-  if (tailSegment.length > 1) {
-    tailSegment.length--;
-  } else if (snake.segments.length > 1) {
-    // Remove the tail segment unless it's also the head segment
-    snake.segments.pop();
+  //   return snake;
+  // }
+
+  if (snake.segments.length > 1) {
+    headSegment.length += 1;
+    tailSegment.length -= 1;
+    if (tailSegment.length === 0) {
+      snake.segments.pop();
+    }
   }
 
   return snake;
