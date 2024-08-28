@@ -89,7 +89,7 @@ const startRound = async (workflowId: string) => {
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ action: 'startRound', duration: 60, workflowId })
+    body: JSON.stringify({ action: 'startRound', duration: 10, workflowId })
   });
   const { result } = await response.json();
   return { result, workflowId };

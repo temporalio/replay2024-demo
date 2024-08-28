@@ -43,11 +43,18 @@
 			}
 		});
 
+    socket.on('roundUpdate', (update) => {
+      if (round?.finished) {
+        clearInterval(demoInterval);
+        demoInterval = null;
+      }
+		});
+
 		socket.on('connect_error', (error) => {
 			console.error('Socket.io connection error:', error);
 			setTimeout(connectSocket, 1000);
 		});
-	}
+	}  
 
 	const fetchState = async () => {
 		const response = await fetch('/api/game', {
@@ -99,7 +106,9 @@
 		if (socket) {
 				socket.disconnect();
 		}
-    demoInterval = null
+
+    clearInterval(demoInterval);
+    demoInterval = null;
 	});
 </script>
 
