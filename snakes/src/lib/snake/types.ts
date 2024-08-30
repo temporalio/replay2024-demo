@@ -1,29 +1,39 @@
 export type GameConfig = {
-  width: number;
-  height: number;
-  teams: string[];
-  snakesPerTeam: number;
+	width: number;
+	height: number;
+	teamNames: string[];
+	snakesPerTeam: number;
 };
 
 export type Game = {
-  config: GameConfig;
+	config: GameConfig;
 	teams: Team[];
-	round?: Round;
+};
+
+export type Player = {
+	id: string;
+	name: string;
+	score: number;
 };
 
 export type Team = {
 	name: string;
-	score?: number;
+	players: Player[];
+	score: number;
 };
+
+export type Teams = Record<string, Team>;
 
 export type Round = {
+	config: GameConfig;
 	apple: Apple;
-	teams: Team[];
-	snakes: Snake[];
+	teams: Teams;
+	snakes: Snakes;
 	duration: number;
-	finished: boolean;
+	startedAt?: number;
+	finished?: boolean;
 };
-
+  
 export type Point = {
 	x: number;
 	y: number;
@@ -32,16 +42,20 @@ export type Point = {
 export type Apple = Point;
 
 export type Segment = {
-	start: Point;
-	length: number;
+	head: Point;
 	direction: Direction;
+	length: number;
 };
 
 export type Snake = {
-	team: string;
 	id: string;
+	teamName: string;
+	playerId: string;
 	segments: Segment[];
+	ateApple?: boolean;
 };
+
+export type Snakes = Record<string, Snake>;
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 

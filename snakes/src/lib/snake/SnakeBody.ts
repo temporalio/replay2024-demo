@@ -1,8 +1,9 @@
-import type SnakeRound from './Round';
+import type SnakeRound from './SnakeRound';
 import type { Direction, Snake, Segment } from './types';
 import { Socket } from 'socket.io-client';
 
 export default class SnakeBody {
+	id: string;
 	snake: Snake
 	private socket: Socket;
 	private round: SnakeRound;
@@ -12,13 +13,15 @@ export default class SnakeBody {
 	constructor(round: SnakeRound, cxt: CanvasRenderingContext2D, snake: Snake, socket: Socket) {	
 		this.round = round;
 		this.context = cxt;
+		this.id = snake.id;
 		this.snake = snake;
 		this.socket = socket;
-		this.color = snake.team;
+		this.color = snake.teamName;
 
-		if (snake.id === 'blue-1') {
+		if (this.id === 'blue-1') {
 			this.setKeyboardEvents();
 		}
+		this.context.reset();
 		this.draw();
 	}
 
@@ -27,7 +30,7 @@ export default class SnakeBody {
 	}
 
 	calculateRect(segment: Segment): { x: number, y: number, width: number, height: number } {
-		let { x, y } = segment.start;
+		let { x, y } = segment.head;
 		let width = 1, height = 1;
 
 		if (segment.direction === 'up') {

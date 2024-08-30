@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { startGame, startDemoGame } from '$lib/utilities/game-controls';
+	import { io } from 'socket.io-client';
+
+	const socket = io();
 
 	let loading = false;
 	const beginGame = async () => {
@@ -22,12 +25,8 @@
 	const beginDemoGame = async () => {
 		loading = true
 		try {
-			const { result, workflowId } = await startDemoGame();
-			if (result?.outcome?.failure || !workflowId) {
-				alert(result?.outcome?.failure?.message || 'Failed to start demo game');
-				return;
-			}
-		goto(`/${workflowId}/demo`);
+			await startDemoGame(socket);
+			goto(`/SnakeGame/demo`);
 		} catch {
 			alert('Failed to start demo game');
 		} finally {

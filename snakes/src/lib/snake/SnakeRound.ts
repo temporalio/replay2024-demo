@@ -1,19 +1,17 @@
 import { CELL_SIZE } from './constants';
-import type { GameConfig, Point, Round, Team } from './types';
+import type { Round } from './types';
 import { Socket } from 'socket.io-client';
-import { random } from './utils';
 
 export default class SnakeRound {
 	private interval: NodeJS.Timeout;
 
 	context: CanvasRenderingContext2D;
 
-	score = 0;
-	duration = 60;
 	paused = false;
 	background = '#000000';
 	finished = false;
 
+	duration: number;
 	width: number;
 	height: number;
 	cellSize = CELL_SIZE;
@@ -21,48 +19,49 @@ export default class SnakeRound {
 	cellsWide: number;
 	cellsTall: number;
 
-	apple: Point = { x: 0, y: 0 };
-	iceCube: Point = { x: 0, y: 0 };
-	teams: Team[]
+	round: Round;
 	socket: Socket;
 
 	constructor(
 		boardCxt: CanvasRenderingContext2D,
 		round: Round,
-		config: GameConfig,
 		socket: Socket,
 	) {
-		const { width, height } = config;
+		const { width, height } = round.config;
 		this.context = boardCxt;
 		this.width = width * CELL_SIZE;
 		this.height = height * CELL_SIZE;
 		this.cellSize = CELL_SIZE;
 		this.cellsWide = width;
 		this.cellsTall = height;
+		this.round = round;
+		// TODO: Calculate time remaining based on round.startedAt
 		this.duration = round.finished ? 0 : round.duration;
-		this.apple = round.apple;
-		this.teams = round.teams;
+		this.finished = !!round.finished;
 		this.socket = socket;
-		this.finished = round.finished;
 
 		document.getElementById('time').innerText = this.duration.toString();
 
+		this.context.reset();
 		this.draw();
 
 		this.interval = setInterval(() => {
 			this.run();
 		}, 1000);
 
-		socket.on('roundUpdate', (update) => {
+		socket.on('roundUpdate', ({ round: updatedRound }: { round: Round} ) => {
 			this.clearApple();
-			this.apple = update.apple;
+			this.round = updatedRound;
 			this.drawApple();
-			this.teams = update.teams;
+		});
+		
+		socket.on('roundFinished', () => {
+			this.finished = true;
 		});
 	}
 
 	run() {
-		if (this.duration === 0 || this.finished) {
+		if (this.finished) {
 			this.end();
 		} else {
 			this.updateTime();
@@ -76,7 +75,7 @@ export default class SnakeRound {
 
 	updateTime() {
 		--this.duration;
-		document.getElementById('time').innerText = this.duration.toString();
+		document.getElementById('time')!.innerText = this.duration.toString();
 	}
 
 	drawGrid() {
@@ -104,33 +103,16 @@ export default class SnakeRound {
 	drawApple() {
 		const appleSize = this.cellSize;
 		this.context.fillStyle = '#00FF00';
-		let { x, y } = this.apple;
+		let { x, y } = this.round.apple;
 		x -= 1;
 		y -= 1;
 		this.context.fillRect(x * appleSize, y * appleSize, appleSize, appleSize);
 	}
 
-	drawImage(base: HTMLImageElement, size: number) {
-		this.context.drawImage(base, this.iceCube.x * size, this.iceCube.y * size, size * 2, size * 2);
-	}
-
-	drawIceCube() {
-		const size = this.cellSize;
-		this.iceCube = { x: random(this.cellsWide), y: random(this.cellsTall) };
-
-		let base = new Image();
-		base.src = '/icecube.png';
-
-		const Round = this;
-		base.onload = function () {
-			Round.drawImage(base, size);
-		};
-	}
-
 	clearApple() {
 		const appleSize = this.cellSize;
 		this.context.fillStyle = this.background;
-		let { x, y } = this.apple;
+		let { x, y } = this.round.apple;
 		x -= 1;
 		y -= 1;
 		this.context.fillRect(x * appleSize, y * appleSize, appleSize, appleSize);

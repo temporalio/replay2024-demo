@@ -1,3 +1,4 @@
+import { Socket } from 'socket.io-client';
 
 const demoPlayers = ['Alex', 'Rob', 'Candace', 'Laura'];
 
@@ -12,19 +13,11 @@ export const startGame = async () => {
   return workflowId;
 }
 
-export const startTestRound = async (workflowId: string) => {
-  await playersRegister(workflowId);
-  await playersJoin(workflowId);
-  return await startRound(workflowId);
-}
-
-export const startDemoGame = async () => {
+export const startDemoGame = async (socket: Socket) => {
   await terminateGame();
   await wait(1000)
-  const workflowId = await startNewGame()
-  await playersRegister(workflowId);
-  await playersJoin(workflowId);
-  return await startRound(workflowId);
+  await startNewGame()
+  await demoPlayersJoin(socket);
 }
 
 const terminateGame = async () => {
@@ -41,7 +34,7 @@ const input = {
   width: 50,
   height: 25,
   snakesPerTeam: 2,
-  teams: ['red', 'blue']
+  teamNames: ['red', 'blue']
 };
 
 const startNewGame = async () => {
@@ -56,46 +49,15 @@ const startNewGame = async () => {
   return workflowId;
 };
 
-const playerRegisters = async (name: string, workflowId: string) => {
-  await fetch('/api/game', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ action: 'playerRegister', name, workflowId })
-  });
-};
-
-const playersRegister = async (workflowId: string) => {
-  for (const name of demoPlayers) {
-    await playerRegisters(name, workflowId);
+const demoPlayersJoin = async (socket: Socket) => {
+  const joins = [];
+  for (let i = 0; i < demoPlayers.length; i++) {
+    const join = socket.emitWithAck('playerJoin', {
+      id: demoPlayers[i],
+      name: demoPlayers[i],
+      teamName: i % 2 == 0 ? 'blue' : 'red'
+    });
+    joins.push(join);
   }
-};
-
-const playerJoins = async (name: string, team: string, workflowId: string) => {
-  await fetch('/api/game', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ action: 'playerJoin', workflowId: `player-${name}`, gameWorkflowId: workflowId, team })
-  });
-};
-
-const playersJoin = async (workflowId: string) => {
-  for (const [i, name] of demoPlayers.entries()) {
-    await playerJoins(name, i < 2 ? 'blue' : 'red', workflowId);
-  }
-};
-
-const startRound = async (workflowId: string) => {
-  const response = await fetch('/api/game', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ action: 'startRound', duration: 60, workflowId })
-  });
-  const { result } = await response.json();
-  return { result, workflowId };
-};
+  await Promise.all(joins);
+}
