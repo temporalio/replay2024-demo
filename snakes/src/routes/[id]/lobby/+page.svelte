@@ -1,12 +1,19 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { startTestRound } from '$lib/utilities/game-controls';
+	import { io }	from 'socket.io-client';
+	import { demoPlayersJoin } from '$lib/utilities/game-controls';
 
-	$: ({ id: workflowId, runId } = $page.params);
+	$: ({ id: workflowId } = $page.params);
 
-	const startRound  = async () => {
-		await startTestRound(workflowId);
+	const socket = io();
+
+	const registerDemoPlayers = async () => {
+		await demoPlayersJoin(socket);
+	}
+
+	const startRound = async () => {
+		socket.emit('roundStart', { duration: 60 });
 		goto(`/${workflowId}/round`);
 	}
 </script>
@@ -27,6 +34,7 @@
 				Blue Team QR
 			</div>
 		</div>
+		<button on:click={registerDemoPlayers}>Register Demo Players</button>
 		<button on:click={startRound}>Start Round</button>	
 	</div>
 </section>

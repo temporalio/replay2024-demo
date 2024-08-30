@@ -280,34 +280,35 @@ function moveSnake(round: Round, snake: Snake, direction: Direction) {
     snake.segments.unshift(headSegment);
   }
 
-  // Move the head segment, wrapping around if are moving past the edge
+  let newHead: Point = { x: head.x, y: head.y };
+
+  // Move the head segment, wrapping around if we are moving past the edge
   if (newDirection === 'up') {
-    head.y = head.y <= 1 ? config.height : head.y - 1;
+    newHead.y = newHead.y <= 1 ? config.height : head.y - 1;
   } else if (newDirection === 'down') {
-    head.y = head.y >= config.height ? 1 : head.y + 1;
+    newHead.y = newHead.y >= config.height ? 1 : head.y + 1;
   } else if (newDirection === 'left') {
-    head.x = head.x <= 1 ? config.width : head.x - 1;
+    newHead.x = newHead.x <= 1 ? config.width : head.x - 1;
   } else if (newDirection === 'right') {
-    head.x = head.x >= config.width ? 1 : head.x + 1;
+    newHead.x = newHead.x >= config.width ? 1 : head.x + 1;
+  }
+
+  // Check if we've hit another snake
+  if (snakeAt(round, newHead)) {
+    // Truncate the snake to just the head, and ignore the requested move
+    headSegment.length = 1;
+    snake.segments = [headSegment];
+
+    return;
   }
 
   // Check if we've hit the apple
-  // Normally after moving the head of the snake, we'll trim the tail to emulate the snake moving.  
-  if (appleAt(round, head)) {
-    tailSegment.length += 1;
+  if (appleAt(round, newHead)) {
     snake.ateApple = true;
+    tailSegment.length += 1;
   }
 
-  // TODO: Need to refactor so that we check for collisions before we move the snake, or we pass in our id so that the check can ignore itself.
-  // Currently the snake always thinks it's hit itself.
-  // // Check if we've hit another snake
-  // if (snakeAt(round, head)) {
-  //   // Truncate the snake to just the head
-  //   headSegment.length = 1;
-  //   snake.segments = [headSegment];
-
-  //   return snake;
-  // }
+  headSegment.head = newHead;
 
   if (snake.segments.length > 1) {
     headSegment.length += 1;
@@ -341,9 +342,9 @@ function calculateRect(segment: Segment): { x1: number, x2: number, y1: number, 
 
   if (direction === 'up' || direction === 'down') {
     x = [start.x, start.x];
-    y = [start.y, start.y + (length * (direction === 'up' ? -1 : 1))];
+    y = [start.y, start.y + ((length - 1) * (direction === 'up' ? 1 : -1))];
   } else {
-    x = [start.x, start.x + (length * (direction === 'left' ? -1 : 1))];
+    x = [start.x, start.x + ((length - 1) * (direction === 'left' ? 1 : -1))];
     y = [start.y, start.y];
   }
 

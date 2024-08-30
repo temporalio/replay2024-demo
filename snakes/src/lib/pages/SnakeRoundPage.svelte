@@ -5,7 +5,7 @@
 	import type { Round } from '$lib/snake/types';
 	import SnakeBody from '$lib/snake/SnakeBody';
 	import SnakeRound from '$lib/snake/SnakeRound';
-	import { updated } from '$app/stores';
+	import { demoPlayersJoin } from '$lib/utilities/game-controls';
 
 	export let isDemo = false;
 
@@ -68,7 +68,27 @@
 		});
 
 		if (isDemo) {
+			await demoPlayersJoin(socket);
 			socket.emit('roundStart', { duration: 60 });
+		}
+
+		// TODO: Remove this when we have player UI
+		if (!isDemo) {
+			const testSnakeId = 'blue-1';
+			const directions = new Map<string, string>([
+				['ArrowLeft', 'left'],
+				['ArrowUp', 'up'],
+				['ArrowRight', 'right'],
+				['ArrowDown', 'down']
+			]);
+
+			document.addEventListener('keydown', function (event) {
+				const direction = directions.get(event.key);
+				if (direction) {
+					socket.emit('snakeChangeDirection', { id: testSnakeId, direction });
+				}
+				return false;
+			});
 		}
 	});
 

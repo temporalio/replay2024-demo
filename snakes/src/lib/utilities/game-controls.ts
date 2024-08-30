@@ -9,15 +9,7 @@ function wait(time: number) {
 export const startGame = async () => {
   await terminateGame();
   await wait(1000)
-  const workflowId = await startNewGame();
-  return workflowId;
-}
-
-export const startDemoGame = async (socket: Socket) => {
-  await terminateGame();
-  await wait(1000)
-  await startNewGame()
-  await demoPlayersJoin(socket);
+  return await startNewGame();
 }
 
 const terminateGame = async () => {
@@ -31,8 +23,8 @@ const terminateGame = async () => {
 }
 
 const input = {
-  width: 50,
-  height: 25,
+  width: 20,
+  height: 20,
   snakesPerTeam: 2,
   teamNames: ['red', 'blue']
 };
@@ -49,7 +41,7 @@ const startNewGame = async () => {
   return workflowId;
 };
 
-const demoPlayersJoin = async (socket: Socket) => {
+export const demoPlayersJoin = async (socket: Socket) => {
   const joins = [];
   for (let i = 0; i < demoPlayers.length; i++) {
     const join = socket.emitWithAck('playerJoin', {

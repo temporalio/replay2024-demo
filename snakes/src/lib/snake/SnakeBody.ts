@@ -18,9 +18,6 @@ export default class SnakeBody {
 		this.socket = socket;
 		this.color = snake.teamName;
 
-		if (this.id === 'blue-1') {
-			this.setKeyboardEvents();
-		}
 		this.context.reset();
 		this.draw();
 	}
@@ -88,25 +85,5 @@ export default class SnakeBody {
 		if (direction !== this.direction()) {
 			this.socket.emit('snakeChangeDirection', this.snake.id, direction);
 		}
-	}
-
-	setKeyboardEvents() {
-		const Snake = this;
-		document.addEventListener('keydown', function (event) {
-			switch (event.key) {
-				case 'ArrowLeft': // left arrow
-					Snake.changeDirection('left');
-					break;
-				case 'ArrowUp': // up arrow
-					Snake.changeDirection('up');
-					break;
-				case 'ArrowRight': // right arrow
-					Snake.changeDirection('right');
-					break;
-				case 'ArrowDown': // down arrow
-					Snake.changeDirection('down');
-					break;
-			}
-		});
 	}
 }
