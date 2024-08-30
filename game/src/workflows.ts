@@ -344,7 +344,7 @@ function calculateRect(segment: Segment): { x1: number, x2: number, y1: number, 
     x = [start.x, start.x];
     y = [start.y, start.y + ((length - 1) * (direction === 'up' ? 1 : -1))];
   } else {
-    x = [start.x, start.x + ((length - 1) * (direction === 'left' ? 1 : -1))];
+    x = [start.x, start.x + ((length - 1) * (direction === 'right' ? 1 : -1))];
     y = [start.y, start.y];
   }
 
