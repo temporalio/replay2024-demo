@@ -23,8 +23,8 @@ const terminateGame = async () => {
 }
 
 const input = {
-  width: 20,
-  height: 20,
+  width: 25,
+  height: 25,
   snakesPerTeam: 2,
   teamNames: ['red', 'blue']
 };

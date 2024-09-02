@@ -1,24 +1,22 @@
-import type SnakeRound from './SnakeRound';
-import type { Direction, Snake, Segment } from './types';
-import { Socket } from 'socket.io-client';
+import { CELL_SIZE } from './constants';
+import type { Direction, Round, Snake, Segment } from './types';
 
 export default class SnakeBody {
 	id: string;
-	snake: Snake
-	private socket: Socket;
-	private round: SnakeRound;
+	snake: Snake;
 	private context: CanvasRenderingContext2D;
 	private color: string;
 
-	constructor(round: SnakeRound, cxt: CanvasRenderingContext2D, snake: Snake, socket: Socket) {	
-		this.round = round;
-		this.context = cxt;
+	constructor(canvas: HTMLCanvasElement, round: Round, snake: Snake) {	
+		canvas.width = round.config.width * CELL_SIZE;
+		canvas.height = round.config.height * CELL_SIZE;
+		this.context = canvas.getContext('2d') as CanvasRenderingContext2D;
+
 		this.id = snake.id;
 		this.snake = snake;
-		this.socket = socket;
 		this.color = snake.teamName;
 
-		this.context.reset();
+		this.context.clearRect(0, 0, canvas.width, canvas.height);
 		this.draw();
 	}
 
@@ -46,10 +44,10 @@ export default class SnakeBody {
 			width = -segment.length;
 		}
 
-		x *= this.round.cellSize;
-		y *= this.round.cellSize;
-		width *= this.round.cellSize;
-		height *= this.round.cellSize;
+		x *= CELL_SIZE;
+		y *= CELL_SIZE;
+		width *= CELL_SIZE;
+		height *= CELL_SIZE;
 
 		return { x, y, width, height };
 	}
@@ -63,7 +61,7 @@ export default class SnakeBody {
 				this.context.strokeRect(x, y, width, height);
 			}
 		});
-		
+
 		this.snake.segments = segments;
 
 		this.draw();
@@ -79,11 +77,5 @@ export default class SnakeBody {
 				this.context.strokeRect(x, y, width, height);
 			}
 		});
-	}
-
-	changeDirection(direction: Direction) {
-		if (direction !== this.direction()) {
-			this.socket.emit('snakeChangeDirection', this.snake.id, direction);
-		}
 	}
 }

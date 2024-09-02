@@ -1,41 +1,50 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { CELL_SIZE } from '$lib/snake/constants';
 	import { io, Socket } from 'socket.io-client';
 	import type { Round } from '$lib/snake/types';
+	import SnakeBoard from '$lib/snake/SnakeBoard';
 	import SnakeBody from '$lib/snake/SnakeBody';
-	import SnakeRound from '$lib/snake/SnakeRound';
 	import { demoPlayersJoin } from '$lib/utilities/game-controls';
 
 	export let isDemo = false;
 
 	let socket: Socket;
 
+	let board: SnakeBoard;
+	let boardCanvas: HTMLCanvasElement;
 	let Snakes: Record<string, SnakeBody> = {};
-
-	let backgroundCanvas: HTMLCanvasElement;
 	let snakeCanvases: Record<string, HTMLCanvasElement> = {};
 
-	let width: number;
-	let height: number;
 	let roundOver = false;
 	let redScore = 0;
 	let blueScore = 0;
+	let timeLeft = 0;
 
+	let timerInterval: NodeJS.Timeout | undefined;
 	let demoInterval: NodeJS.Timeout | undefined;
 
 	onMount(async () => {
 		socket = io();
+		socket.on('connect_error', (error) => {
+			if (socket.active) {
+				console.error('Socket.io connection error (will retry):', error);
+				setTimeout(socket.connect, 1000);
+			}
+		});
 
-		socket.on('roundStarted', ({ round }: { round: Round }) => {
-			width = round.config.width;
-			height = round.config.height;
+		socket.on('roundStarted', async ({ round }: { round: Round }) => {
 			roundOver = false;
 
-			const snakeRound = new SnakeRound(backgroundCanvas.getContext('2d')!, round, socket);
+			board = new SnakeBoard(boardCanvas, round);
 			for (const snake of Object.values(round.snakes)) {
-				Snakes[snake.id] = new SnakeBody(snakeRound, snakeCanvases[snake.id].getContext('2d')!, snake, socket);
+				Snakes[snake.id] = new SnakeBody(snakeCanvases[snake.id], round, snake);
 			}
+
+			timeLeft = round.duration;
+			if (round.startedAt) {
+				timeLeft -= Math.floor((Date.now() - round.startedAt) / 1000);
+			}
+			timerInterval = setInterval(updateTimer, 1000);
 
 			if (isDemo) {
 				demoInterval = setInterval(moveRandomSnake, 50);
@@ -45,32 +54,33 @@
 		socket.on('roundUpdate', ({ round }: { round: Round }) => {
 			redScore = round.teams['red'].score || 0;
 			blueScore = round.teams['blue'].score || 0;
+
+			board.update(round);
 		});
 
 		socket.on('roundFinished', () => {
 			roundOver = true;
+
+			clearInterval(timerInterval);
+			timerInterval = undefined;
+
+			clearInterval(demoInterval);
+			demoInterval = undefined;
+
 			if (isDemo) {
-				clearInterval(demoInterval);
-				demoInterval = undefined;
 				socket.emit('roundStart', { duration: 60 });
 			}
 		});
 
 		socket.on('snakeMoved', ({ snakeId, segments }) => {
-			Snakes[snakeId].redraw(segments);
-		});
-
-		socket.on('connect_error', (error) => {
-			if (socket.active) {
-				console.error('Socket.io connection error (will retry):', error);
-				setTimeout(socket.connect, 1000);
-			}
+			Snakes[snakeId]?.redraw(segments);
 		});
 
 		if (isDemo) {
 			await demoPlayersJoin(socket);
-			socket.emit('roundStart', { duration: 60 });
 		}
+
+		socket.emit('roundStart', { duration: 60 });
 
 		// TODO: Remove this when we have player UI
 		if (!isDemo) {
@@ -99,12 +109,18 @@
 		socket.emit('snakeChangeDirection', { id: snake.id, direction });
 	}
 
+	const updateTimer = () => {
+		timeLeft -= 1;
+	}
+
 	onDestroy (() => {
 		if (socket) {
 			socket.disconnect();
 		}
 		clearInterval(demoInterval);
 		demoInterval = undefined;
+		clearInterval(timerInterval);
+		timerInterval = undefined;
 	});
 </script>
 
@@ -119,15 +135,15 @@
 	{/if}
 </div>
 <div id="game">
-	<canvas bind:this={backgroundCanvas} width={width * CELL_SIZE} height={height * CELL_SIZE} />
+	<canvas bind:this={boardCanvas}/>
 	<!-- TODO: Make this dynamic based on player count -->
-	<canvas bind:this={snakeCanvases['red-0']} width={width * CELL_SIZE} height={height * CELL_SIZE} />
-	<canvas bind:this={snakeCanvases['red-1']} width={width * CELL_SIZE} height={height * CELL_SIZE} />
-	<canvas bind:this={snakeCanvases['blue-0']} width={width * CELL_SIZE} height={height * CELL_SIZE} />
-	<canvas bind:this={snakeCanvases['blue-1']} width={width * CELL_SIZE} height={height * CELL_SIZE} />
+	<canvas bind:this={snakeCanvases['red-0']}/>
+	<canvas bind:this={snakeCanvases['red-1']}/>
+	<canvas bind:this={snakeCanvases['blue-0']}/>
+	<canvas bind:this={snakeCanvases['blue-1']}/>
 </div>
 <div id="score">
-	<div class="retro-lite" id="time" />
+	<div class="retro-lite" id="time">{timeLeft}</div>
 	<div class="retro-lite" id="blue">{blueScore}</div>
 	<div class="retro-lite" id="red">{redScore}</div>
 </div>

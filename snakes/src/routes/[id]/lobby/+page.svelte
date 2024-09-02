@@ -6,14 +6,13 @@
 
 	$: ({ id: workflowId } = $page.params);
 
-	const socket = io();
-
 	const registerDemoPlayers = async () => {
+		const socket = io();
 		await demoPlayersJoin(socket);
+		socket.disconnect();
 	}
 
-	const startRound = async () => {
-		socket.emit('roundStart', { duration: 60 });
+	const startRound = () => {
 		goto(`/${workflowId}/round`);
 	}
 </script>
