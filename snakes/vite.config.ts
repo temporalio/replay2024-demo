@@ -2,7 +2,9 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { type ViteDevServer, defineConfig } from 'vite';
 import { Server } from 'socket.io';
 import { Client } from '@temporalio/client';
-import type { Round } from '$lib/snake/types';
+import type { Lobby, Round } from '$lib/snake/types';
+
+const GAME_WORKFLOW_ID = 'SnakeGame';
 
 const webSocketServer = {
 	name: 'websocket',
@@ -47,10 +49,23 @@ const webSocketServer = {
 				io.emit('snakeMoved', { snakeId, segments });
 			});
 
+			socket.on('lobby', ({ lobby }) => {
+				io.emit('lobby', { lobby });
+			});
+
 			// Player UI -> Game
 			socket.on('roundStart', async ({ duration }) => {
 				try {
-					await temporal.workflow.getHandle('SnakeGame').signal('roundStart', { duration });
+					await temporal.workflow.getHandle(GAME_WORKFLOW_ID).signal('roundStart', { duration });
+				} catch (err) {
+					console.error(err);
+				}
+			});
+
+			socket.on('fetchLobby', async () => {
+				try {
+					const lobby = await temporal.workflow.getHandle(GAME_WORKFLOW_ID).query<Lobby>('lobby');
+					socket.emit('lobby', { lobby });
 				} catch (err) {
 					console.error(err);
 				}

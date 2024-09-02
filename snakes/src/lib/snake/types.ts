@@ -24,6 +24,18 @@ export type Team = {
 
 export type Teams = Record<string, Team>;
 
+export type TeamSummary = {
+	name: string;
+	players: number;
+	score: number;
+};
+
+type TeamSummaries = Record<string, TeamSummary>;
+
+export type Lobby = {
+	teams: TeamSummaries;
+};
+
 export type Round = {
 	config: GameConfig;
 	apple: Apple;

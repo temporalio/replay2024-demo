@@ -25,7 +25,7 @@ const { snakeNom } = proxyActivities<typeof activities>({
   startToCloseTimeout: '5 seconds',
 });
 
-const { playerInvitation, snakeMovedNotification, roundStartedNotification, roundUpdateNotification, roundFinishedNotification } = proxyLocalActivities<typeof activities>({
+const { playerInvitation, snakeMovedNotification, roundStartedNotification, roundUpdateNotification, roundFinishedNotification, lobbyNotification } = proxyLocalActivities<typeof activities>({
   startToCloseTimeout: '5 seconds',
 });
 
@@ -41,9 +41,21 @@ type Game = {
   teams: Teams;
 };
 
+export type Lobby = {
+  teams: TeamSummaries;
+}
+
+type TeamSummaries = Record<string, TeamSummary>;
+
 type Team = {
   name: string;
   players: Player[];
+  score: number;
+};
+
+type TeamSummary = {
+  name: string;
+  players: number;
   score: number;
 };
 
@@ -53,7 +65,7 @@ type Player = {
   score: number;
 };
 
-type Teams = Record<string, Team>;
+export type Teams = Record<string, Team>;
 type Snakes = Record<string, Snake>;
 
 export type Round = {
@@ -109,6 +121,7 @@ function oppositeDirection(direction: Direction): Direction {
 }
 
 export const gameStateQuery = defineQuery<Game>('gameState');
+export const lobbyQuery = defineQuery<Lobby>('lobby');
 export const roundStateQuery = defineQuery<Round>('roundState');
 
 type RoundStartSignal = {
@@ -141,15 +154,27 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
       return acc;
     }, {}),
   };
+  const lobby: Lobby = {
+    teams: config.teamNames.reduce<TeamSummaries>((acc, name) => {
+      acc[name] = { name, players: 0, score: 0 };
+      return acc;
+    }, {}),
+  };
 
   setHandler(gameStateQuery, () => {
-    return game
+    return game;
+  });
+  setHandler(lobbyQuery, () => {
+    return lobby;
   });
 
   setHandler(playerJoinSignal, async ({ id, name, teamName }) => {
     const team = game.teams[teamName];
 
     team.players.push({ id, name, score: 0 });
+    lobby.teams[teamName].players = team.players.length;
+
+    await lobbyNotification(lobby);
   });
 
   let roundStart = false;
@@ -200,7 +225,7 @@ export async function RoundWorkflow({ config, teams, duration }: RoundWorkflowIn
   setHandler(snakeMoveSignal, async (id, direction) => {
     if (round.finished) { return }
     const snake = round.snakes[id];
-    
+
     moveSnake(round, snake, direction);
 
     const notifications = [snakeMovedNotification(snake)];
@@ -225,7 +250,7 @@ export async function RoundWorkflow({ config, teams, duration }: RoundWorkflowIn
   ]);
 
   round.finished = true;
-  
+
   await roundFinishedNotification(round);
 
   log.info('Round ended');
@@ -396,7 +421,7 @@ function buildSnakes(config: GameConfig, teams: Teams): Snakes {
 
 function buildRoundTeams(game: Game): Teams {
   const teams: Teams = {};
-  
+
   for (const team of Object.values(game.teams)) {
     const players = Array.from({ length: game.config.snakesPerTeam }).map(() => nextPlayer(team));
 
