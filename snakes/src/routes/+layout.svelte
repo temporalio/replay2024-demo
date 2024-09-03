@@ -21,5 +21,7 @@
 		padding: 1rem;
 		margin: 0 auto;
 		box-sizing: border-box;
+		overflow: hidden;
+		max-width: 100vw;
 	}
 </style>

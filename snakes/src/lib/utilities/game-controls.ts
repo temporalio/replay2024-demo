@@ -53,3 +53,11 @@ export const demoPlayersJoin = async (socket: Socket) => {
   }
   await Promise.all(joins);
 }
+
+export const registerPlayer = async (socket: Socket, teamName: string, name: string) => {
+  await socket.emitWithAck('playerJoin', {
+    id: name,
+    name: name,
+    teamName,
+  });
+}

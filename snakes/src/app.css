@@ -40,6 +40,7 @@ p {
 a {
 	color: var(--color-theme-1);
 	text-decoration: none;
+	font-family: 'VT323', 'Courier New', monospace; /* Retro computer font */
 }
 
 a:hover {
@@ -49,10 +50,16 @@ a:hover {
 h1 {
 	font-size: 2rem;
 	text-align: center;
+	font-family: 'VT323', 'Courier New', monospace; /* Retro computer font */
 }
 
 h2 {
 	font-size: 1rem;
+	font-family: 'VT323', 'Courier New', monospace; /* Retro computer font */
+}
+
+h3, h4, h5, h6 {
+	font-family: 'VT323', 'Courier New', monospace; /* Retro computer font */
 }
 
 pre {
@@ -87,7 +94,7 @@ button:focus:not(:focus-visible) {
 
 @media (min-width: 720px) {
 	h1 {
-		font-size: 2.4rem;
+		font-size: 3rem;
 	}
 }
 
@@ -104,74 +111,42 @@ button:focus:not(:focus-visible) {
 }
 
 /* Custom CSS */
-
 .retro {
+	color: #ffffff;
 	font-family: 'VT323', 'Courier New', monospace; /* Retro computer font */
-	font-size: 3rem;
-	color: #ff00ff; /* Neon pink */
-	text-shadow:
-		3px 3px 0 #00ffff,
-		/* Cyan offset shadow */ 6px 6px 0 #ff00ff,
-		/* Pink offset shadow */ -2px -2px 10px rgba(255, 0, 255, 0.7),
-		/* Neon glow */ 2px 2px 10px rgba(0, 255, 255, 0.7); /* Neon glow */
-	letter-spacing: 4px;
-	text-transform: uppercase;
-	margin-bottom: 20px;
-	position: relative;
-	z-index: 1;
-}
-
-.retro-lite {
-	font-family: 'VT323', 'Courier New', monospace; /* Retro computer font */
-	font-size: 3rem;
-	letter-spacing: 4px;
+	font-size: 2.5rem;
+	letter-spacing: 2px;
 	text-transform: uppercase;
 }
-
 
 h2 {
 	font-size: 2rem;
 }
 
-.retro::before {
-	content: attr(data-text);
-	position: absolute;
-	left: 2px;
-	top: 2px;
-	color: rgba(0, 255, 255, 0.5); /* Cyan ghost text */
-	z-index: -1;
-}
-
-.retro::after {
-	content: attr(data-text);
-	position: absolute;
-	left: -2px;
-	top: -2px;
-	color: rgba(255, 0, 255, 0.5); /* Pink ghost text */
-	z-index: -2;
-}
-
 button {
 	padding: 15px 30px;
-	font-size: 18px;
-	font-family: 'Helvetica', sans-serif;
-	text-transform: uppercase;
-	letter-spacing: 2px;
-	font-weight: bold;
 	color: #ffffff;
-	background: linear-gradient(45deg, #ff00ff, #00ffff);
-	border: none;
-	border-radius: 5px;
-	box-shadow:
-		0 0 10px rgba(255, 0, 255, 0.5),
-		0 0 20px rgba(0, 255, 255, 0.5);
+	font-weight: bold;
 	cursor: pointer;
 	transition: all 0.3s ease;
 	position: relative;
 	overflow: hidden;
+	border-radius: 5px;
 }
 
-button:before {
+button.retro {
+	font-size: 18px;
+	font-family: 'Helvetica', sans-serif;
+	text-transform: uppercase;
+	letter-spacing: 2px;
+	background: linear-gradient(45deg, #ff2200, #0011ff);
+	border: none;
+	box-shadow:
+		0 0 10px rgba(255, 0, 255, 0.5),
+		0 0 20px rgba(0, 255, 255, 0.5);
+}
+
+button.retro:before {
 	content: '';
 	position: absolute;
 	top: -50%;
@@ -183,11 +158,14 @@ button:before {
 	transition: all 0.3s ease;
 }
 
-button:hover {
-	transform: scale(1.05);
+button.retro:hover {
 	box-shadow:
 		0 0 20px rgba(255, 0, 255, 0.7),
 		0 0 40px rgba(0, 255, 255, 0.7);
+}
+
+button:hover {
+	transform: scale(1.05);
 }
 
 button:hover:before {

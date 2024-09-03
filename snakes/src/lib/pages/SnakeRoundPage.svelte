@@ -158,9 +158,9 @@
 	<canvas bind:this={snakeCanvases['blue-1']}/>
 </div>
 <div id="score">
-	<div class="retro-lite" id="time">{timeLeft}</div>
-	<div class="retro-lite" id="blue">{blueScore}</div>
-	<div class="retro-lite" id="red">{redScore}</div>
+	<div class="retro" id="time">{timeLeft}</div>
+	<div class="retro" id="blue">{blueScore}</div>
+	<div class="retro" id="red">{redScore}</div>
 </div>
 
 <style lang="postcss">
@@ -174,7 +174,7 @@
 	}
 
 	#score {
-		@apply absolute top-0 right-0 w-[5vw] flex flex-col gap-0 text-3xl text-center text-white;
+		@apply absolute top-0 right-0 w-[5vw] flex flex-col gap-0 text-3xl text-center text-white overflow-hidden;
 	}
 
 	#time {

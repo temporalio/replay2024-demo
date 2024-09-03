@@ -35,8 +35,8 @@
 		<h2 class="retro">Loading Game...</h2>
 	{:else}
 	<div class="flex flex-col gap-4">
-		<button on:click={() => { beginGame({ demo: false })} }>Start New Game</button>
-		<button on:click={() => { beginGame({ demo: true })} }>Start Demo Game</button>
+		<button class="retro" on:click={() => { beginGame({ demo: false })} }>Start New Game</button>
+		<button class="retro" on:click={() => { beginGame({ demo: true })} }>Start Demo Game</button>
 	</div>
 	{/if}
 </section>
