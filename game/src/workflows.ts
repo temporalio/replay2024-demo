@@ -195,6 +195,7 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
 
     for (const team of Object.values(round.teams)) {
       game.teams[team.name].score += team.score;
+      lobby.teams[team.name].score += team.score;
     }
   }
 }
@@ -319,7 +320,7 @@ function moveSnake(round: Round, snake: Snake, direction: Direction) {
   }
 
   // Check if we've hit another snake
-  if (snakeAt(round, newHead)) {
+  if (snakeAt(round, newHead, snake)) {
     // Truncate the snake to just the head, and ignore the requested move
     headSegment.length = 1;
     snake.segments = [headSegment];
@@ -379,8 +380,11 @@ function calculateRect(segment: Segment): { x1: number, x2: number, y1: number, 
   return { x1: x[0], x2: x[1], y1: y[0], y2: y[1] };
 }
 
-function snakeAt(round: Round, point: Point): Snake | undefined {
+function snakeAt(round: Round, point: Point, skipSnake: Snake | null): Snake | undefined {
   for (const snake of Object.values(round.snakes)) {
+    if (snake === skipSnake) {
+      continue;
+    }
     for (const segment of snake.segments) {
       const rect = calculateRect(segment);
 
@@ -395,7 +399,7 @@ function snakeAt(round: Round, point: Point): Snake | undefined {
 
 function randomEmptyPoint(round: Round): Point {
   let point = { x: Math.ceil(Math.random() * round.config.width), y: Math.ceil(Math.random() * round.config.height) };
-  while (appleAt(round, point) || snakeAt(round, point)) {
+  while (appleAt(round, point) || snakeAt(round, point, null)) {
     point = { x: Math.ceil(Math.random() * round.config.width), y: Math.ceil(Math.random() * round.config.height) };
   }
   return { x: Math.ceil(Math.random() * round.config.width), y: Math.ceil(Math.random() * round.config.height) };
@@ -403,7 +407,7 @@ function randomEmptyPoint(round: Round): Point {
 
 function buildSnakes(config: GameConfig, teams: Teams): Snakes {
   const snakes: Snakes = {};
-  
+
   for (const teamName in teams) {
     for (let i = 0; i < config.snakesPerTeam; i++) {
       const snake = {

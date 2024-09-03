@@ -54,7 +54,6 @@
 
 		clearInterval(timerInterval);
 		timerInterval = undefined;
-
 		clearInterval(demoInterval);
 		demoInterval = undefined;
 
