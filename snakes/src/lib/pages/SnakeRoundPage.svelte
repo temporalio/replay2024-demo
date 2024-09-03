@@ -23,6 +23,50 @@
 	let timerInterval: NodeJS.Timeout | undefined;
 	let demoInterval: NodeJS.Timeout | undefined;
 
+	const loadRound = (round: Round) => {
+		roundOver = false;
+
+		board = new SnakeBoard(boardCanvas, round);
+		for (const snake of Object.values(round.snakes)) {
+			Snakes[snake.id] = new SnakeBody(snakeCanvases[snake.id], round, snake);
+		}
+
+		timeLeft = round.duration;
+		if (round.startedAt) {
+			timeLeft -= Math.floor((Date.now() - round.startedAt) / 1000);
+		}
+		timerInterval = setInterval(updateTimer, 1000);
+
+		if (isDemo) {
+			demoInterval = setInterval(moveRandomSnake, 50);
+		}
+	}
+
+	const updateRound = (round: Round) => {
+		redScore = round.teams['red'].score || 0;
+		blueScore = round.teams['blue'].score || 0;
+
+		board.update(round);
+	}
+
+	const finishRound = (_round: Round) => {
+		roundOver = true;
+
+		clearInterval(timerInterval);
+		timerInterval = undefined;
+
+		clearInterval(demoInterval);
+		demoInterval = undefined;
+
+		if (isDemo) {
+			socket.emit('roundStart', { duration: 60 });
+		}
+	}
+
+	const updateTimer = () => {
+		timeLeft -= 1;
+	}
+
 	onMount(async () => {
 		socket = io();
 		socket.on('connect_error', (error) => {
@@ -32,44 +76,20 @@
 			}
 		});
 
-		socket.on('roundStarted', async ({ round }: { round: Round }) => {
-			roundOver = false;
-
-			board = new SnakeBoard(boardCanvas, round);
-			for (const snake of Object.values(round.snakes)) {
-				Snakes[snake.id] = new SnakeBody(snakeCanvases[snake.id], round, snake);
-			}
-
-			timeLeft = round.duration;
-			if (round.startedAt) {
-				timeLeft -= Math.floor((Date.now() - round.startedAt) / 1000);
-			}
-			timerInterval = setInterval(updateTimer, 1000);
-
-			if (isDemo) {
-				demoInterval = setInterval(moveRandomSnake, 50);
-			}
+		socket.on('roundStarted', ({ round }: { round: Round }) => {
+			loadRound(round);
 		});
 
 		socket.on('roundUpdate', ({ round }: { round: Round }) => {
-			redScore = round.teams['red'].score || 0;
-			blueScore = round.teams['blue'].score || 0;
-
-			board.update(round);
+			updateRound(round);
 		});
 
-		socket.on('roundFinished', () => {
-			roundOver = true;
+		socket.on('roundFinished', ({ round }: { round: Round }) => {
+			finishRound(round);
+		});
 
-			clearInterval(timerInterval);
-			timerInterval = undefined;
-
-			clearInterval(demoInterval);
-			demoInterval = undefined;
-
-			if (isDemo) {
-				socket.emit('roundStart', { duration: 60 });
-			}
+		socket.on('roundNotFound', () => {
+			socket.emit('roundStart', { duration: 60 });
 		});
 
 		socket.on('snakeMoved', ({ snakeId, segments }) => {
@@ -80,7 +100,7 @@
 			await demoPlayersJoin(socket);
 		}
 
-		socket.emit('roundStart', { duration: 60 });
+		socket.emit('fetchRound');
 
 		// TODO: Remove this when we have player UI
 		if (!isDemo) {
@@ -107,10 +127,6 @@
 		const snake = snakes[Math.floor(Math.random() * snakes.length)];
 		const direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];
 		socket.emit('snakeChangeDirection', { id: snake.id, direction });
-	}
-
-	const updateTimer = () => {
-		timeLeft -= 1;
 	}
 
 	onDestroy (() => {

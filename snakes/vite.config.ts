@@ -16,17 +16,6 @@ const webSocketServer = {
 		const temporal = new Client();
 
 		io.on('connection', (socket) => {
-			// Bootstrap new connections with the current round, if there is one.
-			temporal.workflow.getHandle('SnakeGameRound').query<Round>('roundState')
-				.then((round) => {
-					socket.emit('roundStarted', { round });
-					if (round.finished) {
-						socket.emit('roundFinished', { round });
-					}
-				}).catch((err) => {
-					console.error(err);
-				});
-
 			// Game -> Player UI
 			socket.on('playerInvitation', ({ playerId, snakeId }) => {
 				io.to(`player-${playerId}`).emit('playerInvitation', { snakeId });
@@ -59,6 +48,19 @@ const webSocketServer = {
 					await temporal.workflow.getHandle(GAME_WORKFLOW_ID).signal('roundStart', { duration });
 				} catch (err) {
 					console.error(err);
+				}
+			});
+
+			socket.on('fetchRound', async () => {
+				try {
+					const round = await temporal.workflow.getHandle('SnakeGameRound').query<Round>('roundState');
+					if (round && !round.finished) {
+						socket.emit('roundStarted', { round });
+					} else {
+						socket.emit('roundNotFound');
+					}
+				} catch (err) {
+					socket.emit('roundNotFound');
 				}
 			});
 
