@@ -51,7 +51,7 @@
 
 <style lang="postcss">
   button {
-    @apply flex items-center justify-center border-2 border-white h-32 w-32;
+    @apply flex items-center justify-center border-4 border-white h-32 w-32;
   }
 
   button:hover, button:active {
