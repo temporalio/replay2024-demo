@@ -1,7 +1,8 @@
-import { Snake, Round, Lobby } from './workflows';
+import { Snake, Round } from './workflows';
 import { io } from 'socket.io-client';
 
 const socket = io('http://localhost:5173');
+const lobbySocket = io('http://localhost:5173/lobby');
 
 export async function snakeNom(snakeId: string, durationMs: number) {
     await new Promise((resolve) => setTimeout(resolve, durationMs));
@@ -10,14 +11,6 @@ export async function snakeNom(snakeId: string, durationMs: number) {
 
 export async function snakeMovedNotification(snake: Snake) {
     socket.emit('snakeMoved', { snakeId: snake.id, segments: snake.segments });
-}
-
-export async function playerInvitation(playerId: string, snakeId: string) {
-    socket.emit('playerInvitation', { playerId, snakeId });
-}
-
-export async function lobbyNotification(lobby: Lobby) {
-    socket.emit('lobby', { lobby });
 }
 
 export async function roundStartedNotification(round: Round) {

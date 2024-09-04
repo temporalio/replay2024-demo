@@ -2,9 +2,77 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { type ViteDevServer, defineConfig } from 'vite';
 import { Server } from 'socket.io';
 import { Client } from '@temporalio/client';
-import type { Lobby, Round } from '$lib/snake/types';
+import type { Lobby, Round, Snake } from '$lib/snake/types';
 
 const GAME_WORKFLOW_ID = 'SnakeGame';
+const ROUND_WORKFLOW_ID = 'SnakeGameRound';
+const INVITE_TIMEOUT = 10000;
+
+type SocketLobby = {
+	teams: Record<string, LobbyTeam>;
+}
+
+type LobbyTeam = {
+	players: LobbyPlayers;
+	playerCount: number;
+}
+
+type LobbyPlayer = {
+	id: string;
+	sockets: number;
+}
+
+type LobbyPlayers = Record<string, LobbyPlayer>;
+
+const addPlayerSocket = (socketLobby: SocketLobby, id: string, teamName: string): boolean => {
+	let playerAdded = false;
+
+	let team = socketLobby.teams[teamName];
+	if (!team) {
+		console.log(`Creating team ${teamName}`);
+		team = socketLobby.teams[teamName] = { players: {}, playerCount: 0 };
+	}
+	let player = team.players[id];
+	if (!player) {
+		console.log(`Creating player ${id} in team ${teamName}`);
+		player = team.players[id] = { id, sockets: 0 };
+		team.playerCount++;
+		playerAdded = true;
+	}
+	player.sockets += 1;
+
+	return playerAdded;
+}
+
+const removePlayerSocket = (socketLobby: SocketLobby, id: string, teamName: string): boolean => {
+	let playerRemoved = false;
+
+	const team = socketLobby.teams[teamName];
+	const player = team.players[id];
+	player.sockets -= 1;
+	if (player.sockets === 0) {
+		console.log(`Removing player ${id} in team ${teamName}`);
+		delete team.players[id];
+		team.playerCount--;
+		playerRemoved = true;
+	}
+
+	return playerRemoved;
+}
+
+const lobbySummary = (socketLobby: SocketLobby): Lobby => {
+	const lobby: Lobby = { teams: {}};
+
+	for (const teamName of Object.keys(socketLobby.teams)) {
+		lobby.teams[teamName] = {
+			name: teamName,
+			players: socketLobby.teams[teamName].playerCount,
+			score: 0,
+		};
+	}
+
+	return lobby
+}
 
 const webSocketServer = {
 	name: 'websocket',
@@ -15,20 +83,72 @@ const webSocketServer = {
 		globalThis.io = io;
 		const temporal = new Client();
 
-		io.on('connection', (socket) => {
-			// Game -> Player UI
-			socket.on('playerInvitation', ({ playerId, snakeId }) => {
-				io.to(`player-${playerId}`).emit('playerInvitation', { snakeId });
+		const socketLobby: SocketLobby = { teams: {} };
+
+		const lobbyIO = io.of("/lobby");
+
+		lobbyIO.on('connection', (socket) => {
+			const id: string = socket.handshake.auth.id;
+			const team: string = socket.handshake.auth.team;
+
+			if (id && team) {
+				socket.data.id = id;
+				socket.data.team = team;
+
+				socket.join(`player-${id}`);
+				socket.join(`team-${team}`);
+
+				if (addPlayerSocket(socketLobby, id, team)) {
+					lobbyIO.emit('lobby', { lobby: lobbySummary(socketLobby) });
+				} else {
+					socket.emit('lobby', { lobby: lobbySummary(socketLobby) });
+				}
+			} else {
+				lobbyIO.emit('lobby', { lobby: lobbySummary(socketLobby) });
+			}
+
+			socket.on('findPlayers', async ({ teams, playersPerTeam }: { teams: string[], playersPerTeam: number }, cb) => {
+				const playersInvites = teams.map((team) => {
+					return new Promise<string[]>((resolve) => {
+						lobbyIO.to(`team-${team}`).timeout(INVITE_TIMEOUT).emit('roundInvite', (err: any, responses: string[]) => {
+							if (err) { console.log('errors', err); }
+							resolve(responses);
+						});
+					});
+				})
+				const responses = await Promise.all(playersInvites);
+				const players: Record<string, string[]> = {};
+				responses.forEach((playerIds, i) => { players[teams[i]] = playerIds.slice(0, playersPerTeam); });
+				cb(players);
+				teams.forEach((team) => { lobbyIO.to(`team-${team}`).emit('roundReady'); });
 			});
 
+			socket.on('disconnect', () => {
+				const id: string = socket.data.id;
+				const team: string = socket.data.team;
+				if (!id || !team) {
+					return;
+				}
+
+				if (removePlayerSocket(socketLobby, id, team)) {
+					lobbyIO.emit('lobby', { lobby: lobbySummary(socketLobby) });
+				}
+			});
+		});
+
+		io.on('connection', (socket) => {
+			// Game -> Player UI
 			socket.on('roundStarted', ({ round }) => {
 				io.emit('roundStarted', { round });
 			});
 			socket.on('roundUpdate', ({ round }) => {
 				io.emit('roundUpdate', { round });
 			});
-			socket.on('roundFinished', ({ round }) => {
+			socket.on('roundFinished', ({ round }: { round: Round }) => {
 				io.emit('roundFinished', { round });
+				for (const snake of Object.values(round.snakes)) {
+					lobbyIO.to(`player-${snake.playerId}`).emit('roundFinished');
+				}
 			});
 
 			socket.on('snakeNom', ({ snakeId }) => {
@@ -38,22 +158,21 @@ const webSocketServer = {
 				io.emit('snakeMoved', { snakeId, segments });
 			});
 
-			socket.on('lobby', ({ lobby }) => {
-				io.emit('lobby', { lobby });
-			});
-
 			// Player UI -> Game
-			socket.on('roundStart', async ({ duration }) => {
+			socket.on('roundStart', async ({ duration, snakes }: { duration: number, snakes: Snake[] }) => {
 				try {
-					await temporal.workflow.getHandle(GAME_WORKFLOW_ID).signal('roundStart', { duration });
+					await temporal.workflow.getHandle(GAME_WORKFLOW_ID).signal('roundStart', { duration, snakes });
 				} catch (err) {
 					console.error(err);
+				}
+				for (const snake of snakes) {
+					lobbyIO.to(`player-${snake.playerId}`).emit('roundPlaying', { snake });
 				}
 			});
 
 			socket.on('fetchRound', async () => {
 				try {
-					const round = await temporal.workflow.getHandle('SnakeGameRound').query<Round>('roundState');
+					const round = await temporal.workflow.getHandle(ROUND_WORKFLOW_ID).query<Round>('roundState');
 					if (round && !round.finished) {
 						socket.emit('roundStarted', { round });
 					} else {
@@ -61,15 +180,6 @@ const webSocketServer = {
 					}
 				} catch (err) {
 					socket.emit('roundNotFound');
-				}
-			});
-
-			socket.on('fetchLobby', async () => {
-				try {
-					const lobby = await temporal.workflow.getHandle(GAME_WORKFLOW_ID).query<Lobby>('lobby');
-					socket.emit('lobby', { lobby });
-				} catch (err) {
-					console.error(err);
 				}
 			});
 

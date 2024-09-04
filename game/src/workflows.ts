@@ -6,7 +6,6 @@ import {
   condition,
   log,
   startChild,
-  workflowInfo,
   sleep,
   getExternalWorkflowHandle,
   defineQuery,
@@ -25,7 +24,7 @@ const { snakeNom } = proxyActivities<typeof activities>({
   startToCloseTimeout: '5 seconds',
 });
 
-const { playerInvitation, snakeMovedNotification, roundStartedNotification, roundUpdateNotification, roundFinishedNotification, lobbyNotification } = proxyLocalActivities<typeof activities>({
+const { snakeMovedNotification, roundStartedNotification, roundUpdateNotification, roundFinishedNotification } = proxyLocalActivities<typeof activities>({
   startToCloseTimeout: '5 seconds',
 });
 
@@ -41,32 +40,11 @@ type Game = {
   teams: Teams;
 };
 
-export type Lobby = {
-  teams: TeamSummaries;
-}
-
-type TeamSummaries = Record<string, TeamSummary>;
-
 type Team = {
   name: string;
-  players: Player[];
   score: number;
 };
-
-type TeamSummary = {
-  name: string;
-  players: number;
-  score: number;
-};
-
-type Player = {
-  id: string;
-  name: string;
-  score: number;
-};
-
 export type Teams = Record<string, Team>;
-type Snakes = Record<string, Snake>;
 
 export type Round = {
   config: GameConfig;
@@ -95,11 +73,12 @@ type Segment = {
 
 export type Snake = {
   id: string;
-  teamName: string;
   playerId: string;
+  teamName: string;
   segments: Segment[];
   ateApple?: boolean;
 };
+type Snakes = Record<string, Snake>;
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 
@@ -121,22 +100,14 @@ function oppositeDirection(direction: Direction): Direction {
 }
 
 export const gameStateQuery = defineQuery<Game>('gameState');
-export const lobbyQuery = defineQuery<Lobby>('lobby');
 export const roundStateQuery = defineQuery<Round>('roundState');
 
 type RoundStartSignal = {
+  snakes: Snake[];
   duration: number;
 }
 // UI -> GameWorkflow to start round
 export const roundStartSignal = defineSignal<[RoundStartSignal]>('roundStart');
-
-// Player UI -> GameWorkflow to join team
-type PlayerJoinSignal = {
-  id: string;
-  name: string;
-  teamName: string;
-}
-export const playerJoinSignal = defineSignal<[PlayerJoinSignal]>('playerJoin');
 
 // Player UI -> SnakeWorkflow to change direction
 export const snakeChangeDirectionSignal = defineSignal<[Direction]>('snakeChangeDirection');
@@ -150,13 +121,7 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
   const game: Game = {
     config,
     teams: config.teamNames.reduce<Teams>((acc, name) => {
-      acc[name] = { name, players: [], score: 0 };
-      return acc;
-    }, {}),
-  };
-  const lobby: Lobby = {
-    teams: config.teamNames.reduce<TeamSummaries>((acc, name) => {
-      acc[name] = { name, players: 0, score: 0 };
+      acc[name] = { name, score: 0 };
       return acc;
     }, {}),
   };
@@ -164,49 +129,35 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
   setHandler(gameStateQuery, () => {
     return game;
   });
-  setHandler(lobbyQuery, () => {
-    return lobby;
-  });
 
-  setHandler(playerJoinSignal, async ({ id, name, teamName }) => {
-    const team = game.teams[teamName];
-
-    team.players.push({ id, name, score: 0 });
-    lobby.teams[teamName].players = team.players.length;
-
-    await lobbyNotification(lobby);
-  });
-
-  let roundStart = false;
-  let roundDuration = 0;
-  setHandler(roundStartSignal, async ({ duration }) => {
-    roundStart = true;
-    roundDuration = duration;
+  let newRound: RoundWorkflowInput | undefined;
+  setHandler(roundStartSignal, async ({ duration, snakes }) => {
+    newRound = { config, teams: buildRoundTeams(game), duration, snakes };
   });
 
   while (true) {
-    await condition(() => roundStart);
-    roundStart = false;
+    await condition(() => newRound !== undefined);
     const roundWf = await startChild(RoundWorkflow, {
       workflowId: ROUND_WF_ID,
-      args: [{ config, teams: buildRoundTeams(game), duration: roundDuration }]
+      args: [newRound!]
     });
     const round = await roundWf.result();
 
     for (const team of Object.values(round.teams)) {
       game.teams[team.name].score += team.score;
-      lobby.teams[team.name].score += team.score;
     }
+    newRound = undefined;
   }
 }
 
 type RoundWorkflowInput = {
   config: GameConfig;
   teams: Teams;
+  snakes: Snake[];
   duration: number;
 }
 
-export async function RoundWorkflow({ config, teams, duration }: RoundWorkflowInput): Promise<Round> {
+export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWorkflowInput): Promise<Round> {
   log.info('Starting round', { duration });
 
   const round: Round = {
@@ -214,7 +165,7 @@ export async function RoundWorkflow({ config, teams, duration }: RoundWorkflowIn
     duration: duration,
     apple: OutOfBounds,
     teams: teams,
-    snakes: buildSnakes(config, teams),
+    snakes: snakes.reduce<Snakes>((acc, snake) => { acc[snake.id] = snake; return acc; }, {}),
   };
 
   randomizeRound(round);
@@ -405,65 +356,32 @@ function randomEmptyPoint(round: Round): Point {
   return { x: Math.ceil(Math.random() * round.config.width), y: Math.ceil(Math.random() * round.config.height) };
 }
 
-function buildSnakes(config: GameConfig, teams: Teams): Snakes {
-  const snakes: Snakes = {};
-
-  for (const teamName in teams) {
-    for (let i = 0; i < config.snakesPerTeam; i++) {
-      const snake = {
-        id: `${teamName}-${i}`,
-        teamName: teamName,
-        segments: [{ head: OutOfBounds, length: 1, direction: 'down' as Direction }],
-        playerId: teams[teamName].players[i].id,
-      };
-      snakes[snake.id] = snake;
-    }
-  };
-
-  return snakes;
-}
-
 function buildRoundTeams(game: Game): Teams {
   const teams: Teams = {};
 
   for (const team of Object.values(game.teams)) {
-    const players = Array.from({ length: game.config.snakesPerTeam }).map(() => nextPlayer(team));
-
-    teams[team.name] = { name: team.name, players: players, score: 0 };
+    teams[team.name] = { name: team.name, score: 0 };
   }
 
   return teams;
 }
 
 async function startSnakes(snakes: Snakes) {
-  const commands = Object.values(snakes).flatMap((snake) =>
-    [
-      startChild(SnakeWorkflow, {
-        workflowId: snake.id,
-        args: [{ roundId: ROUND_WF_ID, id: snake.id, direction: snake.segments[0].direction }]
-      }),
-      playerInvitation(snake.playerId, snake.id)
-    ]
+  const commands = Object.values(snakes).map((snake) =>
+    startChild(SnakeWorkflow, {
+      workflowId: snake.id,
+      args: [{ roundId: ROUND_WF_ID, id: snake.id, direction: snake.segments[0].direction }]
+    })
   )
 
-  // TODO: Do these all get started in same WFT?
   await Promise.all(commands);
-}
-
-function nextPlayer(team: Team): Player {
-  const nextPlayer = team.players.shift();
-  if (!nextPlayer) {
-    throw new Error('No players left on team');
-  }
-  team.players.push(nextPlayer);
-  return nextPlayer;
 }
 
 function randomizeRound(round: Round) {
   round.apple = randomEmptyPoint(round);
   for (const snake of Object.values(round.snakes)) {
-    snake.segments[0].head = randomEmptyPoint(round);
-    snake.segments[0].direction = randomDirection();
+    snake.segments = [
+      { head: randomEmptyPoint(round), direction: randomDirection(), length: 1 }
+    ]
   }
 }
-

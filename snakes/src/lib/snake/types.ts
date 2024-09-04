@@ -61,8 +61,8 @@ export type Segment = {
 
 export type Snake = {
 	id: string;
-	teamName: string;
 	playerId: string;
+	teamName: string;
 	segments: Segment[];
 	ateApple?: boolean;
 };

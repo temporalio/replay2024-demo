@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { io, Socket } from 'socket.io-client';
-	import type { Round } from '$lib/snake/types';
+	import type { Round, Snake } from '$lib/snake/types';
 	import SnakeBoard from '$lib/snake/SnakeBoard';
 	import SnakeBody from '$lib/snake/SnakeBody';
 	import { demoPlayersJoin } from '$lib/utilities/game-controls';
@@ -9,12 +9,14 @@
 	export let isDemo = false;
 
 	let socket: Socket;
+	let lobbySocket: Socket;
 
 	let board: SnakeBoard;
 	let boardCanvas: HTMLCanvasElement;
 	let Snakes: Record<string, SnakeBody> = {};
 	let snakeCanvases: Record<string, HTMLCanvasElement> = {};
 
+	let waitingForPlayers = false;
 	let roundOver = false;
 	let redScore = 0;
 	let blueScore = 0;
@@ -56,10 +58,33 @@
 		timerInterval = undefined;
 		clearInterval(demoInterval);
 		demoInterval = undefined;
+	}
 
-		if (isDemo) {
-			socket.emit('roundStart', { duration: 60 });
-		}
+	const startRound = async () => {
+		waitingForPlayers = true;
+		const players = await lobbySocket.emitWithAck('findPlayers', { teams: ['red', 'blue'], playersPerTeam: 2 });
+		waitingForPlayers = false;
+
+		const snakes: Snake[] = Object.keys(players).flatMap((team: string) => {
+			return players[team].map((playerId: string, index: number) => ({
+				id: `${team}-${index}`,
+				playerId: playerId,
+				teamName: team,
+				segments: []
+			}));
+		});
+
+		socket.emit('roundStart', { duration: 60, snakes });
+	}
+
+	const startDemoRound = () => {
+		const snakes: Snake[] = [
+			{ id: 'red-0', playerId: 'Alex', teamName: 'red', segments: [] },
+			{ id: 'red-1', playerId: 'Rob', teamName: 'red', segments: [] },
+			{ id: 'blue-0', playerId: 'Candance', teamName: 'blue', segments: [] },
+			{ id: 'blue-1', playerId: 'Steve', teamName: 'blue', segments: [] },
+		];
+		socket.emit('roundStart', { duration: 60, snakes });
 	}
 
 	const updateTimer = () => {
@@ -68,6 +93,8 @@
 
 	onMount(async () => {
 		socket = io();
+		lobbySocket = io("/lobby");
+
 		socket.on('connect_error', (error) => {
 			if (socket.active) {
 				console.error('Socket.io connection error (will retry):', error);
@@ -85,40 +112,24 @@
 
 		socket.on('roundFinished', ({ round }: { round: Round }) => {
 			finishRound(round);
+			if (isDemo) {
+				startDemoRound();
+			}
 		});
 
-		socket.on('roundNotFound', () => {
-			socket.emit('roundStart', { duration: 60 });
+		socket.on('roundNotFound', async () => {
+			if (isDemo) {
+				startDemoRound();
+			} else {
+				await startRound();
+			}
 		});
 
 		socket.on('snakeMoved', ({ snakeId, segments }) => {
 			Snakes[snakeId]?.redraw(segments);
 		});
 
-		if (isDemo) {
-			await demoPlayersJoin(socket);
-		}
-
 		socket.emit('fetchRound');
-
-		// TODO: Remove this when we have player UI
-		if (!isDemo) {
-			const testSnakeId = 'blue-1';
-			const directions = new Map<string, string>([
-				['ArrowLeft', 'left'],
-				['ArrowUp', 'up'],
-				['ArrowRight', 'right'],
-				['ArrowDown', 'down']
-			]);
-
-			document.addEventListener('keydown', function (event) {
-				const direction = directions.get(event.key);
-				if (direction) {
-					socket.emit('snakeChangeDirection', { id: testSnakeId, direction });
-				}
-				return false;
-			});
-		}
 	});
 
 	const moveRandomSnake = () => {
@@ -143,7 +154,9 @@
 	{#if isDemo}
 		<h2 class="retro">Demo</h2>
 	{:else}
-		{#if roundOver}
+		{#if waitingForPlayers}
+			<h2 class="retro">Waiting for players...</h2>
+		{:else if roundOver}
 			<h2 class="retro">Round Over</h2>
 			<p class="retro"><a class="text-white" href={`/SnakeGame/lobby`}>&larr; Back to Lobby</a></p>
 		{/if}
