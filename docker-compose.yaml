@@ -25,7 +25,7 @@ services:
       - 7233:7233
       - 7243:7243
     volumes:
-      - ./dynamicconfig:/etc/temporal/config/dynamicconfig      
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
   ui:
     image: temporalio/ui:2.29.2
     environment:

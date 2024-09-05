@@ -2,3 +2,7 @@ frontend.enableUpdateWorkflowExecution:
   - value: true
 enableUpdateWorkflowExecutionAsyncAccepted:
   - value: true
+matching.numTaskqueueWritePartitions:
+  - value: 1
+matching.numTaskqueueReadPartitions:
+  - value: 1
