@@ -6,17 +6,15 @@ const TEMPORAL_ADDRESS = env.TEMPORAL_ADDRESS;
 const TEMPORAL_NAMESPACE = env.TEMPORAL_NAMESPACE;
 const TEMPORAL_TASK_QUEUE = env.TEMPORAL_TASK_QUEUE;
 const TEMPORAL_WORKFLOW_TYPE = env.TEMPORAL_WORKFLOW_TYPE;
-const TEMPORAL_PLAYER_WORKFLOW_TYPE = env.TEMPORAL_PLAYER_WORKFLOW_TYPE;
 
 const workflowsUrl = `${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/workflows`;
-const batchUrl = `${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/batch-operations`;
 
 const temporal = new Client();
 
 export async function POST({ request }) {
 	try {
 		const body = await request.json();
-		const { action, name, team, workflowId, gameWorkflowId, duration, input } = body;
+		const { action, input } = body;
 
 		switch (action) {
 			case 'terminateGame':

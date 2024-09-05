@@ -25,6 +25,6 @@ export function getEnv(): Env {
         clientKeyPath: process.env.TEMPORAL_CLIENT_KEY_PATH,
         serverNameOverride: process.env.TEMPORAL_SERVER_NAME_OVERRIDE,
         serverRootCACertificatePath: process.env.TEMPORAL_SERVER_ROOT_CA_CERT_PATH,
-        taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'snakes',
+        taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'game',
     };
 }

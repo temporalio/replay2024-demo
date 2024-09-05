@@ -6,7 +6,11 @@
     "build": "tsc --build",
     "build.watch": "tsc --build --watch",
     "lint": "eslint .",
-    "start": "ts-node src/worker.ts",
+    "game-worker": "TEMPORAL_TASK_QUEUE=game ts-node src/game-worker.ts",
+    "red-worker1": "TEMPORAL_TASK_QUEUE=red-team ts-node src/team-worker.ts",
+    "red-worker2": "TEMPORAL_TASK_QUEUE=red-team ts-node src/team-worker.ts",
+    "blue-worker1": "TEMPORAL_TASK_QUEUE=blue-team ts-node src/team-worker.ts",
+    "blue-worker2": "TEMPORAL_TASK_QUEUE=blue-team ts-node src/team-worker.ts",
     "start.watch": "nodemon src/worker.ts",
     "workflow": "ts-node src/client.ts"
   },

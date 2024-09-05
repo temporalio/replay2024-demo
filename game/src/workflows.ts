@@ -10,24 +10,21 @@ import {
   getExternalWorkflowHandle,
   defineQuery,
   continueAsNew,
-  workflowInfo,
   ParentClosePolicy,
 } from '@temporalio/workflow';
 
 import type * as activities from './activities';
 
 const ROUND_WF_ID = 'SnakeGameRound';
-const SNAKE_WORK_DURATION_MS = 50;
-const SNAKE_WORKERS_PER_TEAM = 1;
 const APPLE_POINTS = 10;
 const SNAKE_MOVES_BEFORE_CAN = 500;
 
 const { snakeNom } = proxyActivities<typeof activities>({
-  startToCloseTimeout: '5 seconds',
+  startToCloseTimeout: '2 seconds',
 });
 
 const { snakeMovedNotification, roundStartedNotification, roundUpdateNotification, roundFinishedNotification } = proxyLocalActivities<typeof activities>({
-  startToCloseTimeout: '5 seconds',
+  startToCloseTimeout: '1 seconds',
 });
 
 type GameConfig = {
@@ -35,6 +32,8 @@ type GameConfig = {
   height: number;
   teamNames: string[];
   snakesPerTeam: number;
+  nomsPerMove: number;
+  nomDuration: number;
 };
 
 type Game = {
@@ -195,7 +194,7 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
   try {
     randomizeRound(round);
 
-    await startSnakes(round.snakes);
+    await startSnakes(round.config, round.snakes);
 
     round.startedAt = Date.now();
 
@@ -218,22 +217,24 @@ type SnakeWorkflowInput = {
   roundId: string;
   id: string;
   direction: Direction;
+  nomsPerMove: number;
+  nomDuration: number;
 };
 
-export async function SnakeWorkflow({ roundId, id, direction }: SnakeWorkflowInput): Promise<void> {
+export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDuration }: SnakeWorkflowInput): Promise<void> {
   setHandler(snakeChangeDirectionSignal, (newDirection) => {
     direction = newDirection;
   });
 
   const round = getExternalWorkflowHandle(roundId);
-  const noms = Array.from({ length: SNAKE_WORKERS_PER_TEAM });
+  const noms = Array.from({ length: nomsPerMove });
   let moves = 0;
 
   while (true) {
-    await Promise.all(noms.map(() => snakeNom(id, SNAKE_WORK_DURATION_MS)));
+    await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
     await round.signal(snakeMoveSignal, id, direction);
     if (moves++ > SNAKE_MOVES_BEFORE_CAN) {
-      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, direction });
+      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, direction, nomsPerMove, nomDuration });
     }
   }
 }
@@ -370,11 +371,18 @@ function buildRoundTeams(game: Game): Teams {
   return teams;
 }
 
-async function startSnakes(snakes: Snakes) {
+async function startSnakes(config: GameConfig, snakes: Snakes) {
   const commands = Object.values(snakes).map((snake) =>
     startChild(SnakeWorkflow, {
       workflowId: snake.id,
-      args: [{ roundId: ROUND_WF_ID, id: snake.id, direction: snake.segments[0].direction }]
+      taskQueue: `${snake.teamName}-team`,
+      args: [{
+        roundId: ROUND_WF_ID,
+        id: snake.id,
+        direction: snake.segments[0].direction,
+        nomsPerMove: config.nomsPerMove,
+        nomDuration: config.nomDuration,
+      }]
     })
   )
 

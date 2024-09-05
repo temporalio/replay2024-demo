@@ -26,7 +26,9 @@ const input = {
   width: 25,
   height: 25,
   snakesPerTeam: 2,
-  teamNames: ['red', 'blue']
+  teamNames: ['red', 'blue'],
+  nomsPerMove: 6,
+  nomDuration: 100,
 };
 
 const startNewGame = async () => {
@@ -40,24 +42,3 @@ const startNewGame = async () => {
   const { workflowId } = await response.json();
   return workflowId;
 };
-
-export const demoPlayersJoin = async (socket: Socket) => {
-  const joins = [];
-  for (let i = 0; i < demoPlayers.length; i++) {
-    const join = socket.emitWithAck('playerJoin', {
-      id: demoPlayers[i],
-      name: demoPlayers[i],
-      teamName: i % 2 == 0 ? 'blue' : 'red'
-    });
-    joins.push(join);
-  }
-  await Promise.all(joins);
-}
-
-export const registerPlayer = async (socket: Socket, teamName: string, name: string) => {
-  await socket.emitWithAck('playerJoin', {
-    id: name,
-    name: name,
-    teamName,
-  });
-}

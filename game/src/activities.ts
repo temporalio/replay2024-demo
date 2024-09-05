@@ -2,7 +2,6 @@ import { Snake, Round } from './workflows';
 import { io } from 'socket.io-client';
 
 const socket = io('http://localhost:5173');
-const lobbySocket = io('http://localhost:5173/lobby');
 
 export async function snakeNom(snakeId: string, durationMs: number) {
     await new Promise((resolve) => setTimeout(resolve, durationMs));
