@@ -19,10 +19,6 @@ const ROUND_WF_ID = 'SnakeGameRound';
 const APPLE_POINTS = 10;
 const SNAKE_MOVES_BEFORE_CAN = 500;
 
-const { snakeNom } = proxyActivities<typeof activities>({
-  startToCloseTimeout: '2 seconds',
-});
-
 const { snakeMovedNotification, roundStartedNotification, roundUpdateNotification, roundFinishedNotification } = proxyLocalActivities<typeof activities>({
   startToCloseTimeout: '1 seconds',
 });
@@ -224,6 +220,10 @@ type SnakeWorkflowInput = {
 export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDuration }: SnakeWorkflowInput): Promise<void> {
   setHandler(snakeChangeDirectionSignal, (newDirection) => {
     direction = newDirection;
+  });
+
+  const { snakeNom } = proxyActivities<typeof activities>({
+    startToCloseTimeout: nomDuration * 2,
   });
 
   const round = getExternalWorkflowHandle(roundId);
