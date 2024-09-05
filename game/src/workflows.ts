@@ -10,6 +10,8 @@ import {
   getExternalWorkflowHandle,
   defineQuery,
   continueAsNew,
+  workflowInfo,
+  ParentClosePolicy,
 } from '@temporalio/workflow';
 
 import type * as activities from './activities';
@@ -139,14 +141,15 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
     await condition(() => newRound !== undefined);
     const roundWf = await startChild(RoundWorkflow, {
       workflowId: ROUND_WF_ID,
-      args: [newRound!]
+      args: [newRound!],
+      parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_REQUEST_CANCEL,
     });
+    newRound = undefined;
     const round = await roundWf.result();
 
     for (const team of Object.values(round.teams)) {
       game.teams[team.name].score += team.score;
     }
-    newRound = undefined;
   }
 }
 
@@ -158,7 +161,7 @@ type RoundWorkflowInput = {
 }
 
 export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWorkflowInput): Promise<Round> {
-  log.info('Starting round', { duration });
+  log.info('Starting round', { duration, snakes });
 
   const round: Round = {
     config: config,
@@ -167,8 +170,6 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
     teams: teams,
     snakes: snakes.reduce<Snakes>((acc, snake) => { acc[snake.id] = snake; return acc; }, {}),
   };
-
-  randomizeRound(round);
 
   setHandler(roundStateQuery, () => {
     return round;
@@ -191,17 +192,20 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
     await Promise.all(notifications);
   });
 
-  await startSnakes(round.snakes);
+  try {
+    randomizeRound(round);
 
-  log.info('Starting round timer', { duration: round.duration });
-  round.startedAt = Date.now();
+    await startSnakes(round.snakes);
 
-  await Promise.all([
-    roundStartedNotification(round),
-    sleep(round.duration * 1000)
-  ]);
+    round.startedAt = Date.now();
 
-  round.finished = true;
+    await Promise.all([
+      roundStartedNotification(round),
+      sleep(round.duration * 1000)
+    ]);
+  } finally {
+    round.finished = true;
+  }
 
   await roundFinishedNotification(round);
 

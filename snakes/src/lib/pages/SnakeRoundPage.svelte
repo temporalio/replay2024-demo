@@ -4,7 +4,6 @@
 	import type { Round, Snake } from '$lib/snake/types';
 	import SnakeBoard from '$lib/snake/SnakeBoard';
 	import SnakeBody from '$lib/snake/SnakeBody';
-	import { demoPlayersJoin } from '$lib/utilities/game-controls';
 
 	export let isDemo = false;
 
