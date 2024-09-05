@@ -4,6 +4,8 @@
 	import { io }	from 'socket.io-client';
 	import QR from '@svelte-put/qr/svg/QR.svelte';
 	import type { Lobby } from '$lib/snake/types';
+	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
 
 	$: ({ id: workflowId } = $page.params);
 
@@ -13,6 +15,7 @@
 	let bluePlayers = 0;
 	let redScore = 0;
 	let blueScore = 0;
+	let baseURL = '';
 
 	const startRound = () => {
 		goto(`/${workflowId}/round`);
@@ -23,6 +26,10 @@
 		redScore = lobby.teams.red?.score || 0;
 		bluePlayers = lobby.teams.blue?.players || 0;
 		blueScore = lobby.teams.blue?.score || 0;
+	});
+
+	onMount(() => {
+		baseURL = window.location.origin;
 	});
 </script>
 
@@ -35,14 +42,14 @@
 	<div class="flex flex-col md:flex-row gap-16 justify-center px-8">
 		<div class="border-red-500 border-4 rounded-xl p-4 text-white">
 			<QR
-				data="/{workflowId}/team/red"
+				data="{baseURL}/{workflowId}/team/red"
 				moduleFill="red"
 				anchorOuterFill="red"
 				anchorInnerFill="red"
 				width="100%"
 			/>
 			<div class="text-center">
-				<a class="text-red-600 text-2xl font-bold" href="/{workflowId}/team/red">RED TEAM</a>
+				<a class="text-red-600 text-2xl font-bold" href="{baseURL}/{workflowId}/team/red">RED TEAM</a>
 				<div class="text-xl" id="red-players">
 					Players: {redPlayers}
 				</div>
@@ -57,14 +64,14 @@
 		</div>	
 		<div class="border-blue-500 border-4 rounded-xl p-4 text-white">
 			<QR
-				data="/{workflowId}/team/blue"
+				data="{baseURL}/{workflowId}/team/blue"
 				moduleFill="blue"
 				anchorOuterFill="blue"
 				anchorInnerFill="blue"
 				width="100%"
 			/>
 			<div class="text-center">
-				<a class="text-blue-600 text-2xl font-bold" href="/{workflowId}/team/blue">BLUE TEAM</a>
+				<a class="text-blue-600 text-2xl font-bold" href="{baseURL}/{workflowId}/team/blue">BLUE TEAM</a>
 				<div class="text-xl" id="blue-players">
 					Players: {bluePlayers}
 				</div>
