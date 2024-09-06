@@ -5,7 +5,6 @@
 	import QR from '@svelte-put/qr/svg/QR.svelte';
 	import type { Lobby } from '$lib/snake/types';
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
 
 	$: ({ id: workflowId } = $page.params);
 
