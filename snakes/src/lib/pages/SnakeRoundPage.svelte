@@ -131,10 +131,42 @@
 		socket.emit('fetchRound');
 	});
 
+	const moveTowardApple = (snake: Snake) => {
+		const head = snake.segments[0]; // Assuming the first element is the snake's head
+    const deltaX = board.apple.x - head.head.x;
+    const deltaY = board.apple.y - head.head.y;
+
+    let preferredDirections = [];
+
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (deltaX > 0) {
+            preferredDirections.push('right');
+        } else if (deltaX < 0) {
+            preferredDirections.push('left');
+        }
+    } else {
+        if (deltaY > 0) {
+            preferredDirections.push('down');
+        } else if (deltaY < 0) {
+            preferredDirections.push('up');
+        }
+    }
+
+    if (deltaY !== 0) {
+        preferredDirections.push(deltaY > 0 ? 'down' : 'up');
+    }
+    if (deltaX !== 0) {
+        preferredDirections.push(deltaX > 0 ? 'right' : 'left');
+    }
+
+    const direction = preferredDirections[Math.floor(Math.random() * preferredDirections.length)];
+		return direction;
+	}
+
 	const moveRandomSnake = () => {
 		const snakes = Object.values(Snakes);
 		const snake = snakes[Math.floor(Math.random() * snakes.length)];
-		const direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];
+		const direction = moveTowardApple(snake.snake)
 		socket.emit('snakeChangeDirection', { id: snake.id, direction });
 	}
 
