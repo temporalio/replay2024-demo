@@ -45,7 +45,7 @@ export type Round = {
 	startedAt?: number;
 	finished?: boolean;
 };
-  
+
 export type Point = {
 	x: number;
 	y: number;

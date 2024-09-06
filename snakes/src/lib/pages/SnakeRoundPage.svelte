@@ -39,7 +39,7 @@
 		timerInterval = setInterval(updateTimer, 1000);
 
 		if (isDemo) {
-			demoInterval = setInterval(moveRandomSnake, 50);
+			demoInterval = setInterval(moveRandomSnake, 100);
 		}
 	}
 

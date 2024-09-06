@@ -198,6 +198,17 @@ const webSocketServer = {
 				}
 			});
 		});
+
+		const workerIO = io.of("/workers");
+
+		workerIO.on('connection', (socket) => {
+			socket.on('workflow:execute', ({ identity, workflowInfo }) => {
+				workerIO.emit('workflow:execute', { identity, workflowInfo });
+			});
+			socket.on('workflow:complete', ({ identity, workflowInfo }) => {
+				workerIO.emit('workflow:complete', { identity, workflowInfo });
+			});
+		});
 	}
 };
 
