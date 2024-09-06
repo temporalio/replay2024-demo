@@ -149,7 +149,7 @@
 	});
 </script>
 
-<div class="flex flex-col items-center justify-center">
+<div class="flex flex-col items-center justify-center z-20">
 	{#if isDemo}
 		<h2 class="retro">Demo</h2>
 	{:else}
@@ -162,7 +162,7 @@
 	{/if}
 </div>
 <div id="game">
-	<canvas bind:this={boardCanvas}/>
+	<canvas id="board" bind:this={boardCanvas}/>
 	<!-- TODO: Make this dynamic based on player count -->
 	<canvas bind:this={snakeCanvases['red-0']}/>
 	<canvas bind:this={snakeCanvases['red-1']}/>
@@ -176,13 +176,23 @@
 </div>
 
 <style lang="postcss">
-	#game, #game canvas {
+	#game {
 		position: absolute;
 		top: 0;
 		left: 0;
 		width: 95vw;
 		height: 100vh;
+	}
+	 #game canvas {
+		position: absolute;
+		top: 14px;
+		left: 14px;
+		width: calc(95vw - 28px);
+		height: calc(100vh - 28px);
 		overflow: hidden;
+	}
+	#board {
+		border: 1px solid #59FDA0;
 	}
 
 	#score {
