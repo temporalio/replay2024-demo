@@ -48,7 +48,7 @@ export default class SnakeBody {
 	}
 
 	redraw(segments: Segment[]) {
-		this.snake.segments.forEach((segment, index) => {
+		this.snake.segments.forEach((segment) => {
 			let { x, y, w, h } = this.calculateRect(segment);
 			this.context.clearRect(x, y, w, h);
 		});
@@ -63,6 +63,7 @@ export default class SnakeBody {
 			const head = index === 0;
 			let { x, y, w, h } = this.calculateRect(segment);
 			this.context.fillRect(x, y, w, h);
+
 			if (head) {
 				const locations: Record<Direction, [[number, number], [number, number]]> = {
 					"up": [[0.25, 0.25],[0.75, 0.25]],
