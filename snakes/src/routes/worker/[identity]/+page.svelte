@@ -35,6 +35,7 @@
 
 <section>
     <h2 class="retro">Worker: { online ? "Online" : "Offline"}</h2>
+    <p class="retro">Workflows:</p>
     <ul class="retro">
         {#each Object.values(workflows) as workflow}
             <li>{workflow.workflowId}</li>
