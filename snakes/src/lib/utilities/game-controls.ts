@@ -1,7 +1,3 @@
-import { Socket } from 'socket.io-client';
-
-const demoPlayers = ['Alex', 'Rob', 'Candace', 'Laura'];
-
 function wait(time: number) {
   return new Promise(resolve => setTimeout(resolve, time));
 }
