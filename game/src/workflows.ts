@@ -14,13 +14,25 @@ import {
 } from '@temporalio/workflow';
 
 import type * as activities from './activities';
+import { buildWorkerActivities } from './activities';
 
 const ROUND_WF_ID = 'SnakeGameRound';
 const APPLE_POINTS = 10;
 const SNAKE_MOVES_BEFORE_CAN = 500;
+const SNAKE_WORKER_DOWN_TIME = '5 seconds';
+const SNAKE_WORKERS_PER_TEAM = 4;
 
 const { snakeMovedNotification, roundStartedNotification, roundUpdateNotification, roundFinishedNotification } = proxyLocalActivities<typeof activities>({
   startToCloseTimeout: '1 seconds',
+});
+
+const { snakeWorker } = proxyActivities<ReturnType<typeof buildWorkerActivities>>({
+  startToCloseTimeout: '1 day',
+  heartbeatTimeout: '2 seconds',
+  retry: {
+    initialInterval: SNAKE_WORKER_DOWN_TIME,
+    backoffCoefficient: 1,
+  },
 });
 
 type GameConfig = {
@@ -126,6 +138,15 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
   setHandler(gameStateQuery, () => {
     return game;
   });
+
+  const workerManagers = config.teamNames.map((team) => {
+    return startChild(SnakeWorkerManagerWorkflow, {
+      workflowId: `${team}-worker-manager`,
+      taskQueue: `${team}-team`,
+      args: [{ team: team, count: SNAKE_WORKERS_PER_TEAM }],
+    });
+  });
+  await Promise.all(workerManagers);
 
   let newRound: RoundWorkflowInput | undefined;
   setHandler(roundStartSignal, async ({ duration, snakes }) => {
@@ -238,6 +259,16 @@ export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDu
     }
   }
 }
+
+type SnakeWorkerManagerWorkflowInput = {
+  team: string;
+  count: number;
+};
+
+export async function SnakeWorkerManagerWorkflow({ team, count }: SnakeWorkerManagerWorkflowInput): Promise<void> {
+  const workers = Array.from({ length: count }).map((_, i) => snakeWorker(`${team}-snake-worker-${i+1}`));
+  await Promise.all(workers);
+};
 
 function moveSnake(round: Round, snake: Snake, direction: Direction) {
   const config = round.config;
@@ -375,7 +406,7 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
   const commands = Object.values(snakes).map((snake) =>
     startChild(SnakeWorkflow, {
       workflowId: snake.id,
-      taskQueue: `${snake.teamName}-team`,
+      taskQueue: `${snake.teamName}-team-snakes`,
       args: [{
         roundId: ROUND_WF_ID,
         id: snake.id,

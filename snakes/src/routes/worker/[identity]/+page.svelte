@@ -17,12 +17,16 @@
 
         workerSocket.on('workflow:execute', ({ identity, workflowInfo }) => {
             if (identity === $page.params.identity) {
-                workflows[workflowInfo.id] = workflowInfo;
+                workflows = { ...workflows, [workflowInfo.workflowId]: workflowInfo };
+            } else {
+                delete workflows[workflowInfo.workflowId];
+                workflows = workflows; // Let Svelte know to update the UI
             }
         });
 
         workerSocket.on('workflow:complete', ({ identity, workflowInfo }) => {
-            delete workflows[workflowInfo.id];
+            delete workflows[workflowInfo.workflowId];
+            workflows = workflows; // Let Svelte know to update the UI
         });
 
         workerSocket.on('disconnect', () => {

@@ -50,11 +50,9 @@ async function run({
     connection,
     namespace,
     workflowsPath: require.resolve('./workflows'),
+    identity: 'game-worker',
     taskQueue,
     activities: activities,
-    // maxCachedWorkflows: 0,
-    // maxConcurrentActivityTaskPolls: 1,
-    // maxConcurrentActivityTaskExecutions: 1,
   });
   console.log('Worker connection successfully established');
 

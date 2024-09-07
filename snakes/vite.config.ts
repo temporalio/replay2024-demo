@@ -202,11 +202,11 @@ const webSocketServer = {
 		const workerIO = io.of("/workers");
 
 		workerIO.on('connection', (socket) => {
-			socket.on('workflow:execute', ({ identity, workflowInfo }) => {
-				workerIO.emit('workflow:execute', { identity, workflowInfo });
+			socket.on('workflow:execute', ({ team, identity, workflowInfo }) => {
+				workerIO.emit('workflow:execute', { team, identity, workflowInfo });
 			});
-			socket.on('workflow:complete', ({ identity, workflowInfo }) => {
-				workerIO.emit('workflow:complete', { identity, workflowInfo });
+			socket.on('workflow:complete', ({ team, identity, workflowInfo }) => {
+				workerIO.emit('workflow:complete', { team, identity, workflowInfo });
 			});
 		});
 	}

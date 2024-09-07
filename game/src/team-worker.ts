@@ -1,11 +1,7 @@
 import fs from 'fs/promises';
-import { Worker, InjectedSinks, NativeConnection } from '@temporalio/worker';
+import { Worker, NativeConnection } from '@temporalio/worker';
 import { Env, getEnv, requiredEnv } from './interfaces/env';
-import * as activities from './activities';
-import { io } from 'socket.io-client';
-import { SocketSinks } from './workflow-interceptors';
-
-const socket = io('http://localhost:5173/workers');
+import { buildWorkerActivities } from './activities';
 
 /**
  * Run a Worker with an mTLS connection, configuration is provided via environment variables.
@@ -50,46 +46,15 @@ async function run({
     connection = await NativeConnection.connect({ address: address });
   }
 
-  const sinks: InjectedSinks<SocketSinks> = {
-    emitter: {
-      workflowExecute: {
-        fn(workflowInfo) {
-          try {
-            socket.emit('workflow:execute', { identity: worker.options.identity, workflowInfo });
-          } catch (err) {
-            console.log('emit failed', err);
-          }
-        },
-        callDuringReplay: true, // The default
-      },
-      workflowComplete: {
-        fn(workflowInfo) {
-          try {
-            socket.emit('workflow:complete', { identity: worker.options.identity, workflowInfo });
-          } catch (err) {
-            console.log('emit failed', err);
-          }
-        },
-        callDuringReplay: false, // The default
-      },
-    },
-  };
-
+  const team = requiredEnv('TEAM');
+  const identity = requiredEnv('IDENTITY');
   const worker = await Worker.create({
     connection,
     namespace,
     workflowsPath: require.resolve('./workflows'),
-    interceptors: {
-      workflowModules: [require.resolve('./workflow-interceptors')],
-    },
-    taskQueue,
-    activities: activities,
-    identity: requiredEnv('TEMPORAL_WORKER_IDENTITY'),
-    sinks,
-    // maxCachedWorkflows: 0,
-    maxConcurrentActivityTaskPolls: 4,
-    maxConcurrentActivityTaskExecutions: 4,
-    stickyQueueScheduleToStartTimeout: '1s',
+    identity,
+    taskQueue: `${team}-team`,
+    activities: buildWorkerActivities(namespace, connection, team),
   });
   console.log('Worker connection successfully established');
 
