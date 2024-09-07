@@ -12,6 +12,7 @@
 
 	let board: SnakeBoard;
 	let boardCanvas: HTMLCanvasElement;
+	let appleCanvas: HTMLCanvasElement;
 	let Snakes: Record<string, SnakeBody> = {};
 	let snakeCanvases: Record<string, HTMLCanvasElement> = {};
 
@@ -27,7 +28,7 @@
 	const loadRound = (round: Round) => {
 		roundOver = false;
 
-		board = new SnakeBoard(boardCanvas, round);
+		board = new SnakeBoard(boardCanvas, appleCanvas, round);
 		for (const snake of Object.values(round.snakes)) {
 			Snakes[snake.id] = new SnakeBody(snakeCanvases[snake.id], round, snake);
 		}
@@ -195,6 +196,7 @@
 </div>
 <div id="game">
 	<canvas id="board" bind:this={boardCanvas}/>
+	<canvas bind:this={appleCanvas}/>
 	<!-- TODO: Make this dynamic based on player count -->
 	<canvas bind:this={snakeCanvases['red-0']}/>
 	<canvas bind:this={snakeCanvases['red-1']}/>
