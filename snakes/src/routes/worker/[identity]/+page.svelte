@@ -16,14 +16,12 @@
         });
 
         workerSocket.on('workflow:execute', ({ identity, workflowInfo }) => {
-            console.log('execute', identity, $page.params.identity, workflowInfo);
             if (identity === $page.params.identity) {
                 workflows[workflowInfo.id] = workflowInfo;
             }
         });
 
         workerSocket.on('workflow:complete', ({ identity, workflowInfo }) => {
-            console.log('complete', identity, $page.params.identity, workflowInfo);
             delete workflows[workflowInfo.id];
         });
 
@@ -38,7 +36,7 @@
     <p class="retro">Workflows:</p>
     <ul class="retro">
         {#each Object.values(workflows) as workflow}
-            <li>{workflow.workflowId}</li>
+            <li>{workflow.workflowType}[{workflow.workflowId}]</li>
         {/each}
     </ul>
 </section>
