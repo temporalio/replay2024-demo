@@ -38,7 +38,7 @@ export type Lobby = {
 
 export type Round = {
 	config: GameConfig;
-	apple: Apple;
+	apples: Apple[];
 	teams: Teams;
 	snakes: Snakes;
 	duration: number;
@@ -64,7 +64,7 @@ export type Snake = {
 	playerId: string;
 	teamName: string;
 	segments: Segment[];
-	ateApple?: boolean;
+	appleIndex?: number;
 };
 
 export type Snakes = Record<string, Snake>;

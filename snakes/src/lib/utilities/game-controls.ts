@@ -24,7 +24,8 @@ const input = {
   snakesPerTeam: 2,
   teamNames: ['red', 'blue'],
   nomsPerMove: 6,
-  nomDuration: 100,
+  nomDuration: 500, // steve testing slower noms
+  appleCount: 4
 };
 
 const startNewGame = async () => {
