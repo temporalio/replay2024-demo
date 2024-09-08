@@ -39,6 +39,7 @@ type GameConfig = {
   width: number;
   height: number;
   teamNames: string[];
+  appleCount: number;
   snakesPerTeam: number;
   nomsPerMove: number;
   nomDuration: number;
@@ -57,7 +58,7 @@ export type Teams = Record<string, Team>;
 
 export type Round = {
   config: GameConfig;
-  apple: Apple;
+  apples: Apple[];
   teams: Teams;
   snakes: Snakes;
   duration: number;
@@ -70,7 +71,7 @@ type Point = {
   y: number;
 };
 
-const OutOfBounds: Readonly<Point> = { x: 0, y: 0 };
+const OutOfBounds: Readonly<Point>[] = [{ x: 0, y: 0 }];
 
 type Apple = Point;
 
@@ -85,7 +86,7 @@ export type Snake = {
   playerId: string;
   teamName: string;
   segments: Segment[];
-  ateApple?: boolean;
+  appleIndex?: number;
 };
 type Snakes = Record<string, Snake>;
 
@@ -182,7 +183,7 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
   const round: Round = {
     config: config,
     duration: duration,
-    apple: OutOfBounds,
+    apples: OutOfBounds,
     teams: teams,
     snakes: snakes.reduce<Snakes>((acc, snake) => { acc[snake.id] = snake; return acc; }, {}),
   };
@@ -198,11 +199,13 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
     moveSnake(round, snake, direction);
 
     const notifications = [snakeMovedNotification(snake)];
-    if (snake.ateApple) {
-      round.apple = randomEmptyPoint(round);
+
+    // if the snake has eaten an apple, determine which one and remove it
+    if (snake.appleIndex !== undefined) {
+      round.apples[snake.appleIndex] = randomEmptyPoint(round);
       round.teams[snake.teamName].score += APPLE_POINTS;
       notifications.push(roundUpdateNotification(round));
-      snake.ateApple = false;
+      snake.appleIndex = undefined;
     }
 
     await Promise.all(notifications);
@@ -233,12 +236,13 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
 type SnakeWorkflowInput = {
   roundId: string;
   id: string;
+  appleCount: number;
   direction: Direction;
   nomsPerMove: number;
   nomDuration: number;
 };
 
-export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDuration }: SnakeWorkflowInput): Promise<void> {
+export async function SnakeWorkflow({ roundId, id, appleCount, direction, nomsPerMove, nomDuration }: SnakeWorkflowInput): Promise<void> {
   setHandler(snakeChangeDirectionSignal, (newDirection) => {
     direction = newDirection;
   });
@@ -255,7 +259,7 @@ export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDu
     await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
     await round.signal(snakeMoveSignal, id, direction);
     if (moves++ > SNAKE_MOVES_BEFORE_CAN) {
-      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, direction, nomsPerMove, nomDuration });
+      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, appleCount, direction, nomsPerMove, nomDuration });
     }
   }
 }
@@ -266,7 +270,7 @@ type SnakeWorkerManagerWorkflowInput = {
 };
 
 export async function SnakeWorkerManagerWorkflow({ team, count }: SnakeWorkerManagerWorkflowInput): Promise<void> {
-  const workers = Array.from({ length: count }).map((_, i) => snakeWorker(`${team}-snake-worker-${i+1}`));
+  const workers = Array.from({ length: count }).map((_, i) => snakeWorker(`${team}-snake-worker-${i + 1}`));
   await Promise.all(workers);
 };
 
@@ -288,8 +292,7 @@ function moveSnake(round: Round, snake: Snake, direction: Direction) {
 
   // Create a new segment if we're changing direction or hitting an edge
   if (newDirection !== currentDirection || againstAnEdge(round, head, direction)) {
-    headSegment = { head: { x: head.x, y: head.y }, direction, length: 0 };
-    head = headSegment.head;
+    headSegment = { head: { x: head.x, y: head.y }, direction: newDirection, length: 0 };
     snake.segments.unshift(headSegment);
   }
 
@@ -311,26 +314,35 @@ function moveSnake(round: Round, snake: Snake, direction: Direction) {
     // Truncate the snake to just the head, and ignore the requested move
     headSegment.length = 1;
     snake.segments = [headSegment];
-
     return;
   }
 
-  // Check if we've hit the apple
-  if (appleAt(round, newHead)) {
-    snake.ateApple = true;
-    tailSegment.length += 1;
+  // Check if we've hit an apple
+  const appleIndex = appleAt(round, newHead);
+  if (appleIndex !== undefined) {
+    // Snake ate an apple, set appleIndex
+    snake.appleIndex = appleIndex;
+    tailSegment.length += 1;  // Grow the snake by increasing the tail length
+
+    // Replace the eaten apple with a new one at a random position
+    round.apples[appleIndex] = randomEmptyPoint(round);
   }
 
   headSegment.head = newHead;
 
+  // Manage snake segment growth and shrinking
   if (snake.segments.length > 1) {
     headSegment.length += 1;
     tailSegment.length -= 1;
+
+    // Remove the tail segment if its length reaches 0
     if (tailSegment.length === 0) {
       snake.segments.pop();
     }
   }
 }
+
+
 
 function againstAnEdge(round: Round, point: Point, direction: Direction): boolean {
   if (direction === 'up') {
@@ -344,8 +356,9 @@ function againstAnEdge(round: Round, point: Point, direction: Direction): boolea
   }
 }
 
-function appleAt(round: Round, point: Point): boolean {
-  return round.apple.x === point.x && round.apple.y === point.y;
+function appleAt(round: Round, point: Point): number | undefined {
+  const index = round.apples.findIndex(apple => apple.x === point.x && apple.y === point.y);
+  return index !== -1 ? index : undefined;
 }
 
 function calculateRect(segment: Segment): { x1: number, x2: number, y1: number, y2: number } {
@@ -386,10 +399,11 @@ function snakeAt(round: Round, point: Point, skipSnake: Snake | null): Snake | u
 
 function randomEmptyPoint(round: Round): Point {
   let point = { x: Math.ceil(Math.random() * round.config.width), y: Math.ceil(Math.random() * round.config.height) };
+  // Check if any apple is at the point
   while (appleAt(round, point) || snakeAt(round, point, null)) {
     point = { x: Math.ceil(Math.random() * round.config.width), y: Math.ceil(Math.random() * round.config.height) };
   }
-  return { x: Math.ceil(Math.random() * round.config.width), y: Math.ceil(Math.random() * round.config.height) };
+  return point;
 }
 
 function buildRoundTeams(game: Game): Teams {
@@ -410,6 +424,7 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
       args: [{
         roundId: ROUND_WF_ID,
         id: snake.id,
+        appleCount: config.appleCount,
         direction: snake.segments[0].direction,
         nomsPerMove: config.nomsPerMove,
         nomDuration: config.nomDuration,
@@ -421,7 +436,13 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
 }
 
 function randomizeRound(round: Round) {
-  round.apple = randomEmptyPoint(round);
+  // Reset apples
+  round.apples = [];
+
+  // Generate multiple apples based on the configured count
+  for (let i = 0; i < round.config.appleCount; i++) {
+    round.apples.push(randomEmptyPoint(round));
+  }
   for (const snake of Object.values(round.snakes)) {
     snake.segments = [
       { head: randomEmptyPoint(round), direction: randomDirection(), length: 1 }

@@ -11,7 +11,7 @@ export default class SnakeBoard {
 	width: number;
 	height: number;
 	round: Round;
-	apple: Apple;
+	apples: Apple[];
 
 	constructor(canvas: HTMLCanvasElement, appleCanvas: HTMLCanvasElement, round: Round) {
 		this.width = round.config.width * CELL_SIZE;
@@ -28,21 +28,21 @@ export default class SnakeBoard {
 		this.appleContext.translate(-1, -1);
 
 		this.round = round;
-		this.apple = round.apple;
+		this.apples = round.apples;
 
 		this.draw()
 	}
 
 	draw() {
 		this.drawBoard();
-		this.drawApple();
+		this.drawApples();
 	}
 
 	update(round: Round) {
 		this.round = round;
 		this.clearApple();
-		this.apple = round.apple;
-		this.drawApple();
+		this.apples = round.apples;
+		this.drawApples();
 	}
 
 	drawBoard() {
@@ -64,12 +64,16 @@ export default class SnakeBoard {
 		this.context.stroke();
 	}
 
-	drawApple() {
+	drawApples() {
 		this.appleContext.fillStyle = APPLE_COLOR;
-		this.appleContext.fillRect(this.apple.x, this.apple.y, 1, 1);
+		this.apples.forEach(apple => {
+			this.appleContext.fillRect(apple.x, apple.y, 1, 1);
+		});
 	}
 
 	clearApple() {
-		this.appleContext.clearRect(this.apple.x, this.apple.y, 1, 1);
+		this.apples.forEach(apple => {
+			this.appleContext.clearRect(apple.x, apple.y, 1, 1);
+		});
 	}
 }
