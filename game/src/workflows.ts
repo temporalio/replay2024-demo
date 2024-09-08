@@ -71,8 +71,6 @@ type Point = {
   y: number;
 };
 
-const OutOfBounds: Readonly<Point>[] = [{ x: 0, y: 0 }];
-
 type Apple = Point;
 
 type Segment = {
@@ -183,7 +181,7 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
   const round: Round = {
     config: config,
     duration: duration,
-    apples: OutOfBounds,
+    apples: [],
     teams: teams,
     snakes: snakes.reduce<Snakes>((acc, snake) => { acc[snake.id] = snake; return acc; }, {}),
   };
