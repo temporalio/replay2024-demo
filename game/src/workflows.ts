@@ -234,13 +234,12 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
 type SnakeWorkflowInput = {
   roundId: string;
   id: string;
-  appleCount: number;
   direction: Direction;
   nomsPerMove: number;
   nomDuration: number;
 };
 
-export async function SnakeWorkflow({ roundId, id, appleCount, direction, nomsPerMove, nomDuration }: SnakeWorkflowInput): Promise<void> {
+export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDuration }: SnakeWorkflowInput): Promise<void> {
   setHandler(snakeChangeDirectionSignal, (newDirection) => {
     direction = newDirection;
   });
@@ -257,7 +256,7 @@ export async function SnakeWorkflow({ roundId, id, appleCount, direction, nomsPe
     await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
     await round.signal(snakeMoveSignal, id, direction);
     if (moves++ > SNAKE_MOVES_BEFORE_CAN) {
-      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, appleCount, direction, nomsPerMove, nomDuration });
+      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, direction, nomsPerMove, nomDuration });
     }
   }
 }
