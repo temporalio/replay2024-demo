@@ -40,7 +40,7 @@ export default class SnakeBoard {
 
 	update(round: Round) {
 		this.round = round;
-		this.clearApple();
+		this.clearApples();
 		this.apples = round.apples;
 		this.drawApples();
 	}
@@ -71,7 +71,7 @@ export default class SnakeBoard {
 		});
 	}
 
-	clearApple() {
+	clearApples() {
 		this.apples.forEach(apple => {
 			this.appleContext.clearRect(apple.x, apple.y, 1, 1);
 		});

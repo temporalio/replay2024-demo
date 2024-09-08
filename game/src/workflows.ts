@@ -285,25 +285,25 @@ function moveSnake(round: Round, snake: Snake, direction: Direction) {
     newDirection = currentDirection;
   }
 
-  let head = headSegment.head;
+  let currentHead = headSegment.head;
 
   // Create a new segment if we're changing direction or hitting an edge
-  if (newDirection !== currentDirection || againstAnEdge(round, head, direction)) {
-    headSegment = { head: { x: head.x, y: head.y }, direction: newDirection, length: 0 };
+  if (newDirection !== currentDirection || againstAnEdge(round, currentHead, direction)) {
+    headSegment = { head: { x: currentHead.x, y: currentHead.y }, direction: newDirection, length: 0 };
     snake.segments.unshift(headSegment);
   }
 
-  let newHead: Point = { x: head.x, y: head.y };
+  let newHead: Point = { x: currentHead.x, y: currentHead.y };
 
   // Move the head segment, wrapping around if we are moving past the edge
   if (newDirection === 'up') {
-    newHead.y = newHead.y <= 1 ? config.height : head.y - 1;
+    newHead.y = newHead.y <= 1 ? config.height : currentHead.y - 1;
   } else if (newDirection === 'down') {
-    newHead.y = newHead.y >= config.height ? 1 : head.y + 1;
+    newHead.y = newHead.y >= config.height ? 1 : currentHead.y + 1;
   } else if (newDirection === 'left') {
-    newHead.x = newHead.x <= 1 ? config.width : head.x - 1;
+    newHead.x = newHead.x <= 1 ? config.width : currentHead.x - 1;
   } else if (newDirection === 'right') {
-    newHead.x = newHead.x >= config.width ? 1 : head.x + 1;
+    newHead.x = newHead.x >= config.width ? 1 : currentHead.x + 1;
   }
 
   // Check if we've hit another snake
@@ -338,8 +338,6 @@ function moveSnake(round: Round, snake: Snake, direction: Direction) {
     }
   }
 }
-
-
 
 function againstAnEdge(round: Round, point: Point, direction: Direction): boolean {
   if (direction === 'up') {
@@ -421,7 +419,6 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
       args: [{
         roundId: ROUND_WF_ID,
         id: snake.id,
-        appleCount: config.appleCount,
         direction: snake.segments[0].direction,
         nomsPerMove: config.nomsPerMove,
         nomDuration: config.nomDuration,
