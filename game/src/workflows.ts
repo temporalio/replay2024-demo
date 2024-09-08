@@ -339,8 +339,6 @@ function moveSnake(round: Round, snake: Snake, direction: Direction) {
   }
 }
 
-
-
 function againstAnEdge(round: Round, point: Point, direction: Direction): boolean {
   if (direction === 'up') {
     return point.y === 1;
@@ -421,7 +419,6 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
       args: [{
         roundId: ROUND_WF_ID,
         id: snake.id,
-        appleCount: config.appleCount,
         direction: snake.segments[0].direction,
         nomsPerMove: config.nomsPerMove,
         nomDuration: config.nomDuration,
