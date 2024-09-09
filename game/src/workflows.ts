@@ -13,17 +13,18 @@ import {
   ParentClosePolicy,
   ActivityCancellationType,
   CancellationScope,
-  isCancellation
+  isCancellation,
+  ChildWorkflowHandle
 } from '@temporalio/workflow';
 
 import type * as activities from './activities';
 import { buildWorkerActivities } from './activities';
+import { start } from 'repl';
 
 const ROUND_WF_ID = 'SnakeGameRound';
 const APPLE_POINTS = 10;
 const SNAKE_MOVES_BEFORE_CAN = 500;
 const SNAKE_WORKER_DOWN_TIME = '5 seconds';
-const SNAKE_WORKERS_PER_TEAM = 4;
 
 const { snakeMovedNotification, roundStartedNotification, roundUpdateNotification, roundFinishedNotification } = proxyLocalActivities<typeof activities>({
   startToCloseTimeout: '1 seconds',
@@ -129,6 +130,13 @@ export const snakeChangeDirectionSignal = defineSignal<[Direction]>('snakeChange
 // (Internal) SnakeWorkflow -> Round to trigger a move
 export const snakeMoveSignal = defineSignal<[string, Direction]>('snakeMove');
 
+export const workerStopSignal = defineSignal('workerStop');
+
+type WorkerStartedSignal = {
+  identity: string;
+};
+export const workerStartedSignal = defineSignal<[WorkerStartedSignal]>('workerStarted');
+
 export async function GameWorkflow(config: GameConfig): Promise<void> {
   log.info('Starting game');
 
@@ -193,50 +201,29 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
 
     moveSnake(round, snake, direction);
 
+    const commands = [snakeMovedNotification(snake)];
+
     // if the snake has eaten an apple, determine which one and remove it
     if (snake.ateAppleId !== undefined) {
-      snakeWorkerScopes[snake.ateAppleId].cancel();
+      const worker = getExternalWorkflowHandle(snake.ateAppleId);
+      commands.push(worker.signal(workerStopSignal));
       delete round.apples[snake.ateAppleId];
       round.teams[snake.teamName].score += APPLE_POINTS;
+      commands.push(roundUpdateNotification(round));
       snake.ateAppleId = undefined;
     }
 
-    await snakeMovedNotification(snake);
-    await roundUpdateNotification(round);
+    await Promise.all(commands);
   });
 
-  const workflowScope = CancellationScope.current();
-  const snakeWorkerScopes: Record<string, CancellationScope> = {};
-  const snakeWorkers: Promise<void>[] = [];
-
-  for (let i = 0; i < SNAKE_WORKERS_PER_TEAM; i++) {
-    const identity = `snake-worker-${i + 1}`;
-    const worker = async () => {
-      while (true) {
-        const scope = new CancellationScope();
-        snakeWorkerScopes[identity] = scope;
-        try {
-          round.apples[identity] = randomEmptyPoint(round);
-          await Promise.all([
-            roundUpdateNotification(round),
-            scope.run(() => snakeWorker(identity))
-          ]);
-        } catch (e) {
-          if (isCancellation(e)) {
-            if (workflowScope.consideredCancelled) { break; }
-            await sleep(SNAKE_WORKER_DOWN_TIME);
-          } else {
-            throw e;
-          }
-        }
-      }
-    }
-    snakeWorkers.push(worker());
-  }
+  setHandler(workerStartedSignal, async ({ identity }) => {
+    round.apples[identity] = randomEmptyPoint(round);
+  });
 
   try {
     randomizeRound(round);
 
+    await startWorkerManagers(snakes.length * 2);
     await startSnakes(round.config, round.snakes);
 
     round.startedAt = Date.now();
@@ -253,9 +240,37 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
 
   log.info('Round ended');
 
-  await Promise.all(snakeWorkers);
-
   return round;
+}
+
+type SnakeWorkerWorkflowInput = {
+  roundId: string;
+  identity: string;
+};
+
+export async function SnakeWorkerWorkflow({ roundId, identity }: SnakeWorkerWorkflowInput): Promise<void> {
+  const round = getExternalWorkflowHandle(roundId);
+  let scope: CancellationScope | undefined;
+
+  setHandler(workerStopSignal, () => {
+    if (scope) { scope.cancel() }
+  });
+
+  while (true) {
+    try {
+      scope = new CancellationScope();
+      await Promise.all([
+        round.signal(workerStartedSignal, { identity }),
+        scope.run(() => snakeWorker(identity)),
+      ])
+    } catch (e) {
+      if (isCancellation(e)) {
+        await sleep(SNAKE_WORKER_DOWN_TIME);
+      } else {
+        throw e;
+      }
+    }
+  }
 }
 
 type SnakeWorkflowInput = {
@@ -334,7 +349,6 @@ function moveSnake(round: Round, snake: Snake, direction: Direction) {
   // Check if we've hit an apple
   const appleId = appleAt(round, newHead);
   if (appleId !== undefined) {
-    console.log('Snake hit an apple', appleId);
     // Snake ate an apple, set appleId
     snake.ateAppleId = appleId;
     tailSegment.length += 1;  // Grow the snake by increasing the tail length
@@ -428,6 +442,17 @@ function buildRoundTeams(game: Game): Teams {
   }
 
   return teams;
+}
+
+async function startWorkerManagers(count: number) {
+  const snakeWorkerManagers = Array.from({ length: count }).map((_, i) => {
+    const identity = `snake-worker-${i + 1}`;
+    return startChild(SnakeWorkerWorkflow, {
+      workflowId: identity,
+      args: [{ roundId: ROUND_WF_ID, identity }],
+    });
+  })
+  return await Promise.all(snakeWorkerManagers);
 }
 
 async function startSnakes(config: GameConfig, snakes: Snakes) {

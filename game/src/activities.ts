@@ -7,6 +7,20 @@ import { SocketSinks } from './workflow-interceptors';
 
 const socket = io('http://localhost:5173');
 
+const workflowBundleOptions = () =>
+  process.env.NODE_ENV === 'production'
+    ? {
+        workflowBundle: {
+          codePath: require.resolve('../workflow-bundle.js'),
+        },
+      }
+    : {
+        workflowsPath: require.resolve('./workflows'),
+        interceptors: {
+          workflowModules: [require.resolve('./workflow-interceptors')],
+        },
+      };
+
 export function buildWorkerActivities(namespace: string, connection: NativeConnection) {
   return {
     snakeWorker: async (identity: string) => {
@@ -42,15 +56,12 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
       const worker = await Worker.create({
         connection,
         namespace,
-        workflowsPath: require.resolve('./workflows'),
+        ...workflowBundleOptions(),
         taskQueue: 'snakes',
         activities: { snakeNom },
         identity,
-        interceptors: {
-          workflowModules: [require.resolve('./workflow-interceptors')],
-        },
         sinks,
-        stickyQueueScheduleToStartTimeout: '1s',
+        stickyQueueScheduleToStartTimeout: 250,
       })
 
       const heartbeater = setInterval(heartbeat, 250);
