@@ -7,11 +7,9 @@
     "build.watch": "tsc --build --watch",
     "lint": "eslint .",
     "game-worker": "ts-node src/game-worker.ts",
-    "red-worker1": "TEAM=red IDENTITY=red-manager-1 ts-node src/team-worker.ts",
-    "red-worker2": "TEAM=red IDENTITY=red-manager-2 ts-node src/team-worker.ts",
-    "blue-worker1": "TEAM=blue IDENTITY=blue-manager-1 ts-node src/team-worker.ts",
-    "blue-worker2": "TEAM=blue IDENTITY=blue-manager-2 ts-node src/team-worker.ts",
-    "start.watch": "nodemon src/worker.ts",
+    "game-worker.watch": "nodemon src/game-worker.ts",
+    "snake-worker-host-worker": "TEMPORAL_TASK_QUEUE=snake-workers ts-node src/snake-worker-host-worker.ts",
+    "snake-worker-host-worker.watch": "TEMPORAL_TASK_QUEUE=snake-workers nodemon src/snake-worker-host-worker.ts",
     "workflow": "ts-node src/client.ts"
   },
   "nodemonConfig": {

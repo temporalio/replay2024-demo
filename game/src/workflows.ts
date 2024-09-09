@@ -11,6 +11,9 @@ import {
   defineQuery,
   continueAsNew,
   ParentClosePolicy,
+  ActivityCancellationType,
+  CancellationScope,
+  isCancellation
 } from '@temporalio/workflow';
 
 import type * as activities from './activities';
@@ -27,8 +30,10 @@ const { snakeMovedNotification, roundStartedNotification, roundUpdateNotificatio
 });
 
 const { snakeWorker } = proxyActivities<ReturnType<typeof buildWorkerActivities>>({
+  taskQueue: 'snake-workers',
   startToCloseTimeout: '1 day',
-  heartbeatTimeout: '2 seconds',
+  heartbeatTimeout: 500,
+  cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
   retry: {
     initialInterval: SNAKE_WORKER_DOWN_TIME,
     backoffCoefficient: 1,
@@ -39,7 +44,6 @@ type GameConfig = {
   width: number;
   height: number;
   teamNames: string[];
-  appleCount: number;
   snakesPerTeam: number;
   nomsPerMove: number;
   nomDuration: number;
@@ -58,13 +62,15 @@ export type Teams = Record<string, Team>;
 
 export type Round = {
   config: GameConfig;
-  apples: Apple[];
+  apples: Apples;
   teams: Teams;
   snakes: Snakes;
   duration: number;
   startedAt?: number;
   finished?: boolean;
 };
+
+type Apples = Record<string, Apple>;
 
 type Point = {
   x: number;
@@ -84,7 +90,7 @@ export type Snake = {
   playerId: string;
   teamName: string;
   segments: Segment[];
-  appleIndex?: number;
+  ateAppleId?: string;
 };
 type Snakes = Record<string, Snake>;
 
@@ -138,15 +144,6 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
     return game;
   });
 
-  const workerManagers = config.teamNames.map((team) => {
-    return startChild(SnakeWorkerManagerWorkflow, {
-      workflowId: `${team}-worker-manager`,
-      taskQueue: `${team}-team`,
-      args: [{ team: team, count: SNAKE_WORKERS_PER_TEAM }],
-    });
-  });
-  await Promise.all(workerManagers);
-
   let newRound: RoundWorkflowInput | undefined;
   setHandler(roundStartSignal, async ({ duration, snakes }) => {
     newRound = { config, teams: buildRoundTeams(game), duration, snakes };
@@ -181,7 +178,7 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
   const round: Round = {
     config: config,
     duration: duration,
-    apples: [],
+    apples: {},
     teams: teams,
     snakes: snakes.reduce<Snakes>((acc, snake) => { acc[snake.id] = snake; return acc; }, {}),
   };
@@ -196,18 +193,46 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
 
     moveSnake(round, snake, direction);
 
-    const notifications = [snakeMovedNotification(snake)];
-
     // if the snake has eaten an apple, determine which one and remove it
-    if (snake.appleIndex !== undefined) {
-      round.apples[snake.appleIndex] = randomEmptyPoint(round);
+    if (snake.ateAppleId !== undefined) {
+      snakeWorkerScopes[snake.ateAppleId].cancel();
+      delete round.apples[snake.ateAppleId];
       round.teams[snake.teamName].score += APPLE_POINTS;
-      notifications.push(roundUpdateNotification(round));
-      snake.appleIndex = undefined;
+      snake.ateAppleId = undefined;
     }
 
-    await Promise.all(notifications);
+    await snakeMovedNotification(snake);
+    await roundUpdateNotification(round);
   });
+
+  const workflowScope = CancellationScope.current();
+  const snakeWorkerScopes: Record<string, CancellationScope> = {};
+  const snakeWorkers: Promise<void>[] = [];
+
+  for (let i = 0; i < SNAKE_WORKERS_PER_TEAM; i++) {
+    const identity = `snake-worker-${i + 1}`;
+    const worker = async () => {
+      while (true) {
+        const scope = new CancellationScope();
+        snakeWorkerScopes[identity] = scope;
+        try {
+          round.apples[identity] = randomEmptyPoint(round);
+          await Promise.all([
+            roundUpdateNotification(round),
+            scope.run(() => snakeWorker(identity))
+          ]);
+        } catch (e) {
+          if (isCancellation(e)) {
+            if (workflowScope.consideredCancelled) { break; }
+            await sleep(SNAKE_WORKER_DOWN_TIME);
+          } else {
+            throw e;
+          }
+        }
+      }
+    }
+    snakeWorkers.push(worker());
+  }
 
   try {
     randomizeRound(round);
@@ -227,6 +252,8 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
   await roundFinishedNotification(round);
 
   log.info('Round ended');
+
+  await Promise.all(snakeWorkers);
 
   return round;
 }
@@ -260,16 +287,6 @@ export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDu
     }
   }
 }
-
-type SnakeWorkerManagerWorkflowInput = {
-  team: string;
-  count: number;
-};
-
-export async function SnakeWorkerManagerWorkflow({ team, count }: SnakeWorkerManagerWorkflowInput): Promise<void> {
-  const workers = Array.from({ length: count }).map((_, i) => snakeWorker(`${team}-snake-worker-${i + 1}`));
-  await Promise.all(workers);
-};
 
 function moveSnake(round: Round, snake: Snake, direction: Direction) {
   const config = round.config;
@@ -315,14 +332,12 @@ function moveSnake(round: Round, snake: Snake, direction: Direction) {
   }
 
   // Check if we've hit an apple
-  const appleIndex = appleAt(round, newHead);
-  if (appleIndex !== undefined) {
-    // Snake ate an apple, set appleIndex
-    snake.appleIndex = appleIndex;
+  const appleId = appleAt(round, newHead);
+  if (appleId !== undefined) {
+    console.log('Snake hit an apple', appleId);
+    // Snake ate an apple, set appleId
+    snake.ateAppleId = appleId;
     tailSegment.length += 1;  // Grow the snake by increasing the tail length
-
-    // Replace the eaten apple with a new one at a random position
-    round.apples[appleIndex] = randomEmptyPoint(round);
   }
 
   headSegment.head = newHead;
@@ -351,9 +366,13 @@ function againstAnEdge(round: Round, point: Point, direction: Direction): boolea
   }
 }
 
-function appleAt(round: Round, point: Point): number | undefined {
-  const index = round.apples.findIndex(apple => apple.x === point.x && apple.y === point.y);
-  return index !== -1 ? index : undefined;
+function appleAt(round: Round, point: Point): string | undefined {
+  for (const [id, apple] of Object.entries(round.apples)) {
+    if (apple.x === point.x && apple.y === point.y) {
+      return id;
+    }
+  }
+  return undefined;
 }
 
 function calculateRect(segment: Segment): { x1: number, x2: number, y1: number, y2: number } {
@@ -415,7 +434,7 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
   const commands = Object.values(snakes).map((snake) =>
     startChild(SnakeWorkflow, {
       workflowId: snake.id,
-      taskQueue: `${snake.teamName}-team-snakes`,
+      taskQueue: `snakes`,
       args: [{
         roundId: ROUND_WF_ID,
         id: snake.id,
@@ -430,13 +449,6 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
 }
 
 function randomizeRound(round: Round) {
-  // Reset apples
-  round.apples = [];
-
-  // Generate multiple apples based on the configured count
-  for (let i = 0; i < round.config.appleCount; i++) {
-    round.apples.push(randomEmptyPoint(round));
-  }
   for (const snake of Object.values(round.snakes)) {
     snake.segments = [
       { head: randomEmptyPoint(round), direction: randomDirection(), length: 1 }

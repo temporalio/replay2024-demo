@@ -38,13 +38,14 @@ export type Lobby = {
 
 export type Round = {
 	config: GameConfig;
-	apples: Apple[];
+	apples: Apples;
 	teams: Teams;
 	snakes: Snakes;
 	duration: number;
 	startedAt?: number;
 	finished?: boolean;
 };
+export type Apples = Record<string, Apple>;
 
 export type Point = {
 	x: number;
