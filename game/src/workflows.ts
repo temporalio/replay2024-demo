@@ -234,12 +234,13 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
 type SnakeWorkflowInput = {
   roundId: string;
   id: string;
+  appleCount: number;
   direction: Direction;
   nomsPerMove: number;
   nomDuration: number;
 };
 
-export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDuration }: SnakeWorkflowInput): Promise<void> {
+export async function SnakeWorkflow({ roundId, id, appleCount, direction, nomsPerMove, nomDuration }: SnakeWorkflowInput): Promise<void> {
   setHandler(snakeChangeDirectionSignal, (newDirection) => {
     direction = newDirection;
   });
@@ -256,7 +257,7 @@ export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDu
     await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
     await round.signal(snakeMoveSignal, id, direction);
     if (moves++ > SNAKE_MOVES_BEFORE_CAN) {
-      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, direction, nomsPerMove, nomDuration });
+      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, appleCount, direction, nomsPerMove, nomDuration });
     }
   }
 }
@@ -339,6 +340,8 @@ function moveSnake(round: Round, snake: Snake, direction: Direction) {
   }
 }
 
+
+
 function againstAnEdge(round: Round, point: Point, direction: Direction): boolean {
   if (direction === 'up') {
     return point.y === 1;
@@ -419,6 +422,7 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
       args: [{
         roundId: ROUND_WF_ID,
         id: snake.id,
+        appleCount: config.appleCount,
         direction: snake.segments[0].direction,
         nomsPerMove: config.nomsPerMove,
         nomDuration: config.nomDuration,
