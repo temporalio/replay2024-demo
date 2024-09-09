@@ -23,7 +23,7 @@ const input = {
   height: 25,
   snakesPerTeam: 2,
   teamNames: ['red', 'blue'],
-  nomsPerMove: 6,
+  nomsPerMove: 1,
   nomDuration: 200, // steve testing slower noms
 };
 

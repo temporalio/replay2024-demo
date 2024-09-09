@@ -24,7 +24,7 @@ const APPLE_POINTS = 10;
 const SNAKE_MOVES_BEFORE_CAN = 500;
 const SNAKE_WORKER_DOWN_TIME = '5 seconds';
 
-const { emit, snakeMovedNotification, roundStartedNotification, roundUpdateNotification, roundFinishedNotification } = proxyLocalActivities<typeof activities>({
+const { emit, roundStartedNotification, roundFinishedNotification } = proxyLocalActivities<typeof activities>({
   startToCloseTimeout: '1 seconds',
 });
 
@@ -33,10 +33,6 @@ const { snakeWorker } = proxyActivities<ReturnType<typeof buildWorkerActivities>
   startToCloseTimeout: '1 day',
   heartbeatTimeout: 500,
   cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
-  retry: {
-    initialInterval: SNAKE_WORKER_DOWN_TIME,
-    backoffCoefficient: 1,
-  },
 });
 
 type GameConfig = {
@@ -484,7 +480,7 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
   const commands = Object.values(snakes).map((snake) =>
     startChild(SnakeWorkflow, {
       workflowId: snake.id,
-      taskQueue: `snakes`,
+      taskQueue: 'snakes',
       args: [{
         roundId: ROUND_WF_ID,
         id: snake.id,
