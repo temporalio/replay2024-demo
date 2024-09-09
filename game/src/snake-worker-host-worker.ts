@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import { Worker, NativeConnection } from '@temporalio/worker';
-import { Env, getEnv, requiredEnv } from './interfaces/env';
+import { Env, getEnv } from './interfaces/env';
 import { buildWorkerActivities } from './activities';
 
 /**
@@ -46,15 +46,12 @@ async function run({
     connection = await NativeConnection.connect({ address: address });
   }
 
-  const team = requiredEnv('TEAM');
-  const identity = requiredEnv('IDENTITY');
   const worker = await Worker.create({
     connection,
     namespace,
     workflowsPath: require.resolve('./workflows'),
-    identity,
-    taskQueue: `${team}-team`,
-    activities: buildWorkerActivities(namespace, connection, team),
+    taskQueue,
+    activities: buildWorkerActivities(namespace, connection),
   });
   console.log('Worker connection successfully established');
 

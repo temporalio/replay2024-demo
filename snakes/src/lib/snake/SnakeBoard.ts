@@ -28,7 +28,7 @@ export default class SnakeBoard {
 		this.appleContext.translate(-1, -1);
 
 		this.round = round;
-		this.apples = round.apples;
+		this.apples = Object.values(round.apples);
 
 		this.draw()
 	}
@@ -41,7 +41,7 @@ export default class SnakeBoard {
 	update(round: Round) {
 		this.round = round;
 		this.clearApples();
-		this.apples = round.apples;
+		this.apples = Object.values(round.apples);
 		this.drawApples();
 	}
 

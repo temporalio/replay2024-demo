@@ -2,11 +2,12 @@ import { Snake, Round } from './workflows';
 import { io } from 'socket.io-client';
 import { Worker, InjectedSinks, NativeConnection } from '@temporalio/worker';
 import { heartbeat, cancelled } from '@temporalio/activity';
+import { CancellationScope } from '@temporalio/workflow';
 import { SocketSinks } from './workflow-interceptors';
 
 const socket = io('http://localhost:5173');
 
-export function buildWorkerActivities(namespace: string, connection: NativeConnection, team: string) {
+export function buildWorkerActivities(namespace: string, connection: NativeConnection) {
   return {
     snakeWorker: async (identity: string) => {
       const workerSocket = io('http://localhost:5173/workers', {
@@ -18,7 +19,7 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
           workflowExecute: {
             fn(workflowInfo) {
               try {
-                workerSocket.emit('workflow:execute', { team, identity, workflowInfo });
+                workerSocket.emit('workflow:execute', { identity, workflowInfo });
               } catch (err) {
                 console.log('emit failed', err);
               }
@@ -28,7 +29,7 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
           workflowComplete: {
             fn(workflowInfo) {
               try {
-                workerSocket.emit('workflow:complete', { team, identity, workflowInfo });
+                workerSocket.emit('workflow:complete', { identity, workflowInfo });
               } catch (err) {
                 console.log('emit failed', err);
               }
@@ -42,7 +43,7 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
         connection,
         namespace,
         workflowsPath: require.resolve('./workflows'),
-        taskQueue: `${team}-team-snakes`,
+        taskQueue: 'snakes',
         activities: { snakeNom },
         identity,
         interceptors: {
@@ -52,16 +53,11 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
         stickyQueueScheduleToStartTimeout: '1s',
       })
 
-      workerSocket.on('worker:stop', async ({ identity: targetIdentity }) => {
-        if (identity === targetIdentity) {
-          worker.shutdown();
-        }
-      });
-      cancelled().catch(() => worker.shutdown());
+      const heartbeater = setInterval(heartbeat, 250);
 
-      const heartbeater = setInterval(heartbeat, 1000);
+      await worker.runUntil(cancelled())
 
-      await worker.run();
+      console.log('Worker shutdown', { cancelled: CancellationScope.current().consideredCancelled });
 
       clearInterval(heartbeater);
     },
