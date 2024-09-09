@@ -14,19 +14,17 @@ import {
   ActivityCancellationType,
   CancellationScope,
   isCancellation,
-  ChildWorkflowHandle
 } from '@temporalio/workflow';
 
 import type * as activities from './activities';
-import { buildWorkerActivities } from './activities';
-import { start } from 'repl';
+import { buildWorkerActivities, Event } from './activities';
 
 const ROUND_WF_ID = 'SnakeGameRound';
 const APPLE_POINTS = 10;
 const SNAKE_MOVES_BEFORE_CAN = 500;
 const SNAKE_WORKER_DOWN_TIME = '5 seconds';
 
-const { snakeMovedNotification, roundStartedNotification, roundUpdateNotification, roundFinishedNotification } = proxyLocalActivities<typeof activities>({
+const { emit, snakeMovedNotification, roundStartedNotification, roundUpdateNotification, roundFinishedNotification } = proxyLocalActivities<typeof activities>({
   startToCloseTimeout: '1 seconds',
 });
 
@@ -180,6 +178,11 @@ type RoundWorkflowInput = {
   duration: number;
 }
 
+type SnakeMove = {
+  id: string;
+  direction: Direction;
+};
+
 export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWorkflowInput): Promise<Round> {
   log.info('Starting round', { duration, snakes });
 
@@ -191,47 +194,69 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
     snakes: snakes.reduce<Snakes>((acc, snake) => { acc[snake.id] = snake; return acc; }, {}),
   };
 
+  const snakeMoves: SnakeMove[] = [];
+  const workersStarted: string[] = [];
+
   setHandler(roundStateQuery, () => {
     return round;
   });
 
   setHandler(snakeMoveSignal, async (id, direction) => {
-    if (round.finished) { return }
-    const snake = round.snakes[id];
-
-    moveSnake(round, snake, direction);
-
-    const commands = [snakeMovedNotification(snake)];
-
-    // if the snake has eaten an apple, determine which one and remove it
-    if (snake.ateAppleId !== undefined) {
-      const worker = getExternalWorkflowHandle(snake.ateAppleId);
-      commands.push(worker.signal(workerStopSignal));
-      delete round.apples[snake.ateAppleId];
-      round.teams[snake.teamName].score += APPLE_POINTS;
-      commands.push(roundUpdateNotification(round));
-      snake.ateAppleId = undefined;
-    }
-
-    await Promise.all(commands);
+    snakeMoves.push({ id, direction });
   });
 
   setHandler(workerStartedSignal, async ({ identity }) => {
+    workersStarted.push(identity);
     round.apples[identity] = randomEmptyPoint(round);
   });
 
-  try {
-    randomizeRound(round);
+  randomizeRound(round);
 
+  try {
     await startWorkerManagers(snakes.length * 2);
     await startSnakes(round.config, round.snakes);
 
     round.startedAt = Date.now();
+    sleep(duration * 1000).then(() => round.finished = true);
+    await roundStartedNotification(round)
 
-    await Promise.all([
-      roundStartedNotification(round),
-      sleep(round.duration * 1000)
-    ]);
+    while (!round.finished) {
+      await condition(() => snakeMoves.length > 0 || workersStarted.length > 0);
+
+      const events: Event[] = [];
+      const applesEaten: string[] = [];
+      const signals = [];
+
+      for (const move of snakeMoves) {
+        const snake = round.snakes[move.id];
+        moveSnake(round, snake, move.direction);
+        events.push({ type: 'snakeMoved', payload: { snakeId: move.id, segments: snake.segments } });
+        if (snake.ateAppleId) {
+          applesEaten.push(snake.ateAppleId);
+          round.teams[snake.teamName].score += APPLE_POINTS;
+          snake.ateAppleId = undefined;
+        }
+      }
+
+      for (const appleId of applesEaten) {
+        const worker = getExternalWorkflowHandle(appleId);
+        signals.push(worker.signal(workerStopSignal));
+        delete round.apples[appleId];
+      }
+
+      for (const workerId of workersStarted) {
+        round.apples[workerId] = randomEmptyPoint(round);
+      }
+
+      if (applesEaten.length || workersStarted.length) {
+        events.push({ type: 'roundUpdate', payload: { round } });
+      }
+
+      snakeMoves.length = 0;
+      workersStarted.length = 0;
+
+      await Promise.all([emit(events), ...signals]);
+    }
   } finally {
     round.finished = true;
   }

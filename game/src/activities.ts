@@ -75,6 +75,17 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
   }
 }
 
+export type Event = {
+  type: 'snakeNom' | 'snakeMoved' | 'roundStarted' | 'roundUpdate' | 'roundFinished';
+  payload: any;
+};
+
+export async function emit(events: Event[]) {
+  for (const event of events) {
+    socket.emit(event.type, event.payload);
+  }
+};
+
 export async function snakeNom(snakeId: string, durationMs: number) {
   await new Promise((resolve) => setTimeout(resolve, durationMs));
   socket.emit('snakeNom', { snakeId });

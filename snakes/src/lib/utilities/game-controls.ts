@@ -4,7 +4,7 @@ function wait(time: number) {
 
 export const startGame = async () => {
   await terminateGame();
-  await wait(1000)
+  await wait(2000)
   return await startNewGame();
 }
 
