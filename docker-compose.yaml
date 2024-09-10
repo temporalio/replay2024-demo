@@ -18,7 +18,7 @@ services:
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgresql
-    image: temporalio/auto-setup:1.24.1
+    image: temporalio/auto-setup:1.25.0
     networks:
       - demo-network
     ports:
@@ -27,7 +27,7 @@ services:
     volumes:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
   ui:
-    image: temporalio/ui:2.29.2
+    image: temporalio/ui:2.30.2
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://localhost:3000

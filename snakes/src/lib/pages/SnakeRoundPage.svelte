@@ -4,6 +4,7 @@
 	import type { Round, Snake } from '$lib/snake/types';
 	import SnakeBoard from '$lib/snake/SnakeBoard';
 	import SnakeBody from '$lib/snake/SnakeBody';
+	import { GAME_CONFIG, SNAKE_NUMBERS } from '$lib/snake/constants';
 
 	export let isDemo = false;
 
@@ -19,9 +20,7 @@
 	let waitingForPlayers = false;
 	let roundLoading = false;
 	let roundOver = false;
-	let redScore = 0;
-	let blueScore = 0;
-	let orangeScore = 0;
+	let scores: Record<string, number> = {};
 	let timeLeft = 0;
 
 	let timerInterval: NodeJS.Timeout | undefined;
@@ -54,9 +53,9 @@
 	};
 
 	const updateRound = (round: Round) => {
-		redScore = round.teams['red'].score || 0;
-		blueScore = round.teams['blue'].score || 0;
-		orangeScore = round.teams['orange'].score || 0;
+		for (const team of GAME_CONFIG.teamNames) {
+			scores[team] = round.teams[team].score || 0;
+		}
 
 		board.update(round);
 	};
@@ -73,14 +72,14 @@
 	const startNewRound = async () => {
 		waitingForPlayers = true;
 		const players = await lobbySocket.emitWithAck('findPlayers', {
-			teams: ['red', 'blue', 'orange'],
-			playersPerTeam: 1
+			teams: GAME_CONFIG.teamNames,
+			playersPerTeam: GAME_CONFIG.snakesPerTeam
 		});
 		waitingForPlayers = false;
 
 		const snakes: Snake[] = Object.keys(players).flatMap((team: string) => {
-			return players[team].map((playerId: string, index: number) => ({
-				id: `${team}-${index}`,
+			return players[team].map((playerId: string, i: number) => ({
+				id: `${team}-${i}`,
 				playerId: playerId,
 				teamName: team,
 				segments: []
@@ -91,11 +90,12 @@
 	};
 
 	const startNewDemoRound = () => {
-		const snakes: Snake[] = [
-			{ id: 'red-0', playerId: 'Alex', teamName: 'red', segments: [] },
-			{ id: 'blue-0', playerId: 'Candance', teamName: 'blue', segments: [] },
-			{ id: 'orange-1', playerId: 'Steve', teamName: 'orange', segments: [] }
-		];
+		const snakes: Snake[] = GAME_CONFIG.teamNames.flatMap((team: string) => {
+			return SNAKE_NUMBERS.map((i) => {
+				return { id: `${team}-${i}`, playerId: `${team} Bot ${i}`, teamName: team, segments: [] };
+			});
+		});
+
 		socket.emit('roundStart', { duration: 60, snakes });
 	};
 
@@ -232,18 +232,17 @@
 	<canvas id="board" bind:this={boardCanvas} />
 	<canvas bind:this={appleCanvas} />
 	<!-- TODO: Make this dynamic based on player count -->
-	<canvas bind:this={snakeCanvases['red-0']} />
-	<canvas bind:this={snakeCanvases['red-1']} />
-	<canvas bind:this={snakeCanvases['blue-0']} />
-	<canvas bind:this={snakeCanvases['blue-1']} />
-	<canvas bind:this={snakeCanvases['orange-0']} />
-	<canvas bind:this={snakeCanvases['orange-1']} />
+	{#each GAME_CONFIG.teamNames as team}
+		{#each SNAKE_NUMBERS as i}
+			<canvas bind:this={snakeCanvases[`${team}-${i}`]} />
+		{/each}
+	{/each}
 </div>
 <div id="score">
 	<div class="retro" id="time">{timeLeft}</div>
-	<div class="retro" id="blue">{blueScore}</div>
-	<div class="retro" id="red">{redScore}</div>
-	<div class="retro" id="orange">{orangeScore}</div>
+	{#each GAME_CONFIG.teamNames as team}
+		<div class="retro" id={team}>{scores[team] || 0}</div>
+	{/each}
 </div>
 
 <style lang="postcss">

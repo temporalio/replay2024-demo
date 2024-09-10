@@ -76,11 +76,9 @@
 
 {#if snake && playing}
 <div class="flex flex-col items-center gap-6 text-6xl">
-    <div class="w-16 h-16 rounded border-2" 
+    <div class="w-16 h-16 rounded border-2 bg-{snake.teamName}-600" 
       class:border-white={snake.id.endsWith('-0')}
       class:border-black={snake.id.endsWith('-1')}
-      class:bg-red-600={snake.teamName === 'red'}
-      class:bg-blue-600={snake.teamName === 'blue'}
       />
     <button class="mx-auto" on:click={() => onMove('up')}>&#8593;</button>
     <div class="flex gap-6">

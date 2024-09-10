@@ -5,17 +5,14 @@
 	import QR from '@svelte-put/qr/svg/QR.svelte';
 	import type { Lobby } from '$lib/snake/types';
 	import { onMount } from 'svelte';
+	import { GAME_CONFIG } from '$lib/snake/constants';
 
 	$: ({ id: workflowId } = $page.params);
 
 	const lobbySocket = io("/lobby");
 
-	let redPlayers = 0;
-	let bluePlayers = 0;
-	let redScore = 0;
-	let blueScore = 0;
-	let orangePlayers = 0;
-	let orangeScore = 0;
+	let players: Record<string, number> = {};
+	let scores: Record<string, number> = {};
 	let baseURL = '';
 
 	const startRound = () => {
@@ -23,12 +20,10 @@
 	}
 
 	lobbySocket.on('lobby', ({ lobby }: { lobby: Lobby }) => {
-		redPlayers = lobby.teams.red?.players || 0;
-		redScore = lobby.teams.red?.score || 0;
-		bluePlayers = lobby.teams.blue?.players || 0;
-		blueScore = lobby.teams.blue?.score || 0;
-		orangePlayers = lobby.teams.orange?.players || 0;
-		orangeScore = lobby.teams.orange?.score || 0;
+		for (const team of GAME_CONFIG.teamNames) {
+			players[team] = lobby.teams[team]?.players || 0;
+			scores[team] = lobby.teams[team]?.score || 0;
+		}
 	});
 
 	onMount(() => {
@@ -48,60 +43,26 @@
 		</div>
 	</div>
 	<div class="flex flex-col md:flex-row gap-16 justify-center px-8">
-		<div class="border-red-500 border-4 rounded-xl p-4 text-white">
-			<QR
-				data="{baseURL}/{workflowId}/team/red"
-				moduleFill="red"
-				anchorOuterFill="red"
-				anchorInnerFill="red"
-				width="100%"
-			/>
-			<div class="text-center">
-				<a class="text-red-600 text-2xl font-bold" href="{baseURL}/{workflowId}/team/red">RED TEAM</a>
-				<div class="text-xl" id="red-players">
-					Players: {redPlayers}
-				</div>
-				<div class="text-xl" id="red-score">
-					Score: {redScore}
-				</div>
-			</div>
-		</div>
-		<div class="border-blue-500 border-4 rounded-xl p-4 text-white">
-			<QR
-				data="{baseURL}/{workflowId}/team/blue"
-				moduleFill="blue"
-				anchorOuterFill="blue"
-				anchorInnerFill="blue"
-				width="100%"
-			/>
-			<div class="text-center">
-				<a class="text-blue-600 text-2xl font-bold" href="{baseURL}/{workflowId}/team/blue">BLUE TEAM</a>
-				<div class="text-xl" id="blue-players">
-					Players: {bluePlayers}
-				</div>
-				<div class="text-xl" id="blue-score">
-					Score: {blueScore}
+		{#each GAME_CONFIG.teamNames as team}
+			<div class="border-{team}-500 border-4 rounded-xl p-4 text-white">
+				<QR
+					data="{baseURL}/{workflowId}/team/{team}"
+					moduleFill="{team}"
+					anchorOuterFill="{team}"
+					anchorInnerFill="{team}"
+					width="100%"
+				/>
+				<div class="text-center">
+					<a class="text-{team}-600 text-2xl font-bold" href="{baseURL}/{workflowId}/team/{team}">{team.toUpperCase()} TEAM</a>
+					<div class="text-xl" id="{team}-players">
+						Players: {players[team]}
+					</div>
+					<div class="text-xl" id="{team}-score">
+						Score: {scores[team]}
+					</div>
 				</div>
 			</div>
-		</div>
-		<div class="border-orange-500 border-4 rounded-xl p-4 text-white">
-			<QR
-				data="{baseURL}/{workflowId}/team/orange"
-				moduleFill="orange"
-				anchorOuterFill="orange"
-				anchorInnerFill="orange"
-				width="100%"
-			/>
-			<div class="text-center">
-				<a class="text-orange-600 text-2xl font-bold" href="{baseURL}/{workflowId}/team/orange">ORANGE TEAM</a>
-				<div class="text-xl" id="orange-players">
-					Players: {orangePlayers}
-				</div>
-				<div class="text-xl" id="orange-score">
-					Score: {orangeScore}
-				</div>
-			</div>
-		</div>
+		{/each}
 	</div>
 	<div class="flex flex-col md:flex-row gap-16 justify-center px-8">
 		<div class="flex justify-center items-center flex-col gap-4 py-8">

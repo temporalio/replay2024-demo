@@ -41,6 +41,7 @@ type GameConfig = {
   teamNames: string[];
   snakesPerTeam: number;
   nomsPerMove: number;
+  nomActivity: boolean;
   nomDuration: number;
   killWorkers: boolean;
 };
@@ -315,10 +316,11 @@ type SnakeWorkflowInput = {
   id: string;
   direction: Direction;
   nomsPerMove: number;
+  nomActivity: boolean;
   nomDuration: number;
 };
 
-export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDuration }: SnakeWorkflowInput): Promise<void> {
+export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomActivity, nomDuration }: SnakeWorkflowInput): Promise<void> {
   setHandler(snakeChangeDirectionSignal, (newDirection) => {
     direction = newDirection;
   });
@@ -332,10 +334,14 @@ export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDu
   let moves = 0;
 
   while (true) {
-    await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
+    if (nomActivity) {
+      await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
+    } else {
+      await sleep(nomDuration);
+    }
     await round.signal(snakeMoveSignal, id, direction);
     if (moves++ > SNAKE_MOVES_BEFORE_CAN) {
-      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, direction, nomsPerMove, nomDuration });
+      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, direction, nomsPerMove, nomActivity, nomDuration });
     }
   }
 }

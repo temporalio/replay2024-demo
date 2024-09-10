@@ -3,6 +3,9 @@ export type GameConfig = {
 	height: number;
 	teamNames: string[];
 	snakesPerTeam: number;
+	nomsPerMove: number;
+    nomDuration: number;
+    killWorkers: boolean;
 };
 
 export type Game = {
