@@ -1,5 +1,5 @@
 import { CELL_SIZE } from './constants';
-import type { Direction, Round, Snake, Segment } from './types';
+import type { Direction, Round, Snake, Segment, Point } from './types';
 
 export default class SnakeBody {
 	id: string;
@@ -57,6 +57,27 @@ export default class SnakeBody {
 		this.draw();
 	}
 
+	drawEyes(head: Point, direction: Direction) {
+		const locations: Record<Direction, [[number, number], [number, number]]> = {
+			"up": [[0.25, 0.25],[0.75, 0.25]],
+			"down": [[0.25, 0.75],[0.75, 0.75]],
+			"left": [[0.25, 0.25],[0.25, 0.75]],
+			"right": [[0.75, 0.25],[0.75, 0.75]],
+		};
+		const location = locations[direction];
+		this.context.lineWidth = 0.05;
+		this.context.save();
+		this.context.strokeStyle = this.snake.id.includes('1') ? 'white' : 'black';
+		this.context.translate(head.x, head.y);
+		this.context.beginPath();
+		this.context.arc(location[0][0], location[0][1], 0.04, 0, 2 * Math.PI);
+		this.context.stroke();
+		this.context.beginPath();
+		this.context.arc(location[1][0], location[1][1], 0.04, 0, 2 * Math.PI);
+		this.context.stroke();
+		this.context.restore();
+	}
+
 	draw() {
 		this.context.fillStyle = this.color;
 		this.snake.segments.forEach((segment, index) => {
@@ -65,24 +86,7 @@ export default class SnakeBody {
 			this.context.fillRect(x, y, w, h);
 
 			if (head) {
-				const locations: Record<Direction, [[number, number], [number, number]]> = {
-					"up": [[0.25, 0.25],[0.75, 0.25]],
-					"down": [[0.25, 0.75],[0.75, 0.75]],
-					"left": [[0.25, 0.25],[0.25, 0.75]],
-					"right": [[0.75, 0.25],[0.75, 0.75]],
-				};
-				const location = locations[segment.direction];
-				this.context.lineWidth = 0.05;
-				this.context.save();
-				this.context.strokeStyle = this.snake.id.includes('1') ? 'white' : 'black';
-				this.context.translate(segment.head.x, segment.head.y);
-				this.context.beginPath();
-				this.context.arc(location[0][0], location[0][1], 0.04, 0, 2 * Math.PI);
-				this.context.stroke();
-				this.context.beginPath();
-				this.context.arc(location[1][0], location[1][1], 0.04, 0, 2 * Math.PI);
-				this.context.stroke();
-				this.context.restore();
+        this.drawEyes(segment.head, segment.direction);
 			}
 		});
 	}
