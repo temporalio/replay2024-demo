@@ -90,6 +90,7 @@
 	};
 
 	const startNewDemoRound = () => {
+		console.log('Starting new demo round');
 		const snakes: Snake[] = GAME_CONFIG.teamNames.flatMap((team: string) => {
 			return SNAKE_NUMBERS.map((i) => {
 				return { id: `${team}-${i}`, playerId: `${team} Bot ${i}`, teamName: team, segments: [] };
@@ -136,8 +137,9 @@
 		});
 
 		socket.on('roundNotFound', async () => {
+			console.log('Round not found, starting new round');
 			if (isDemo) {
-				startNewDemoRound();
+				await startNewDemoRound();
 			} else {
 				await startNewRound();
 			}

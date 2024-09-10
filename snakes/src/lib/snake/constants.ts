@@ -13,6 +13,7 @@ export const GAME_CONFIG: GameConfig = {
   teamNames: ['red', 'blue', 'orange'],
   nomsPerMove: 1,
   nomDuration: 250,
-  killWorkers: false,
+  nomActivity: false,
+  killWorkers: true,
 };
 export const SNAKE_NUMBERS = [...Array(GAME_CONFIG.snakesPerTeam).keys()];

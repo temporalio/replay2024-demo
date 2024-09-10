@@ -164,6 +164,7 @@ const webSocketServer = {
 			// Player UI -> Game
 			socket.on('roundStart', async ({ duration, snakes }: { duration: number, snakes: Snake[] }) => {
 				try {
+					console.log('roundStart', { duration, snakes });
 					await temporal.workflow.getHandle(GAME_WORKFLOW_ID).signal('roundStart', { duration, snakes });
 				} catch (err) {
 					console.error(err);
@@ -197,20 +198,16 @@ const webSocketServer = {
 			socket.on('snakeChangeDirection', async ({ id, direction }) => {
 				try {
 					await temporal.workflow.getHandle(id).signal('snakeChangeDirection', direction);
-				} catch (err) {
-					console.error(err);
-				}
+				} catch {}
 			});
 		});
 
 		const workerIO = io.of("/workers");
 
 		workerIO.on('connection', (socket) => {
-			socket.on('workflow:execute', ({ team, identity, workflowInfo }) => {
-				workerIO.emit('workflow:execute', { team, identity, workflowInfo });
-			});
-			socket.on('workflow:complete', ({ team, identity, workflowInfo }) => {
-				workerIO.emit('workflow:complete', { team, identity, workflowInfo });
+			socket.on('workflow:instances', ({ identity, count }) => {
+				console.log('workflow:instances', { identity, count });
+				workerIO.emit('workflow:instances', { identity, count });
 			});
 		});
 	}

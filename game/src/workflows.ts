@@ -17,14 +17,14 @@ import {
 } from '@temporalio/workflow';
 
 import type * as activities from './activities';
-import { buildWorkerActivities, Event } from './activities';
+import { buildGameActivities, buildWorkerActivities, Event } from './activities';
 
 const ROUND_WF_ID = 'SnakeGameRound';
 const APPLE_POINTS = 10;
-const SNAKE_MOVES_BEFORE_CAN = 500;
-const SNAKE_WORKER_DOWN_TIME = '5 seconds';
+const SNAKE_MOVES_BEFORE_CAN = 50;
+const SNAKE_WORKER_DOWN_TIME = '1 seconds';
 
-const { emit } = proxyLocalActivities<typeof activities>({
+const { emit } = proxyLocalActivities<ReturnType<typeof buildGameActivities>>({
   startToCloseTimeout: '1 seconds',
 });
 
@@ -303,7 +303,8 @@ export async function SnakeWorkerWorkflow({ roundId, identity }: SnakeWorkerWork
       ])
     } catch (e) {
       if (isCancellation(e)) {
-        await sleep(SNAKE_WORKER_DOWN_TIME);
+        // Let workers start again faster for now.
+        // await sleep(SNAKE_WORKER_DOWN_TIME);
       } else {
         throw e;
       }

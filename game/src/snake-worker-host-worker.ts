@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import { Worker, NativeConnection } from '@temporalio/worker';
-import { Env, getEnv } from './interfaces/env';
+import { Env, getEnv, requiredEnv } from './interfaces/env';
 import { buildWorkerActivities } from './activities';
 
 /**
@@ -51,7 +51,7 @@ async function run({
     namespace,
     workflowsPath: require.resolve('./workflows'),
     taskQueue,
-    activities: buildWorkerActivities(namespace, connection),
+    activities: buildWorkerActivities(namespace, connection, requiredEnv('SOCKETIO_HOST')),
   });
   console.log('Worker connection successfully established');
 

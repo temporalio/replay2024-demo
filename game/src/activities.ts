@@ -1,11 +1,6 @@
-import { Snake, Round } from './workflows';
 import { io } from 'socket.io-client';
-import { Worker, InjectedSinks, NativeConnection } from '@temporalio/worker';
+import { Worker, NativeConnection } from '@temporalio/worker';
 import { heartbeat, cancelled } from '@temporalio/activity';
-import { CancellationScope } from '@temporalio/workflow';
-import { SocketSinks } from './workflow-interceptors';
-
-const socket = io('http://localhost:5173');
 
 const workflowBundleOptions = () =>
   process.env.NODE_ENV === 'production'
@@ -14,63 +9,40 @@ const workflowBundleOptions = () =>
           codePath: require.resolve('../workflow-bundle.js'),
         },
       }
-    : {
-        workflowsPath: require.resolve('./workflows'),
-        interceptors: {
-          workflowModules: [require.resolve('./workflow-interceptors')],
-        },
-      };
+    : { workflowsPath: require.resolve('./workflows') };
 
-export function buildWorkerActivities(namespace: string, connection: NativeConnection) {
+export function buildWorkerActivities(namespace: string, connection: NativeConnection, socketHost: string) {
   return {
     snakeWorker: async (identity: string) => {
-      const workerSocket = io('http://localhost:5173/workers', {
+      const workerSocket = io(`${socketHost}/workers`, {
         auth: { identity }
       });
 
-      const sinks: InjectedSinks<SocketSinks> = {
-        emitter: {
-          workflowExecute: {
-            fn(workflowInfo) {
-              try {
-                workerSocket.emit('workflow:execute', { identity, workflowInfo });
-              } catch (err) {
-                console.log('emit failed', err);
-              }
-            },
-            callDuringReplay: true,
-          },
-          workflowComplete: {
-            fn(workflowInfo) {
-              try {
-                workerSocket.emit('workflow:complete', { identity, workflowInfo });
-              } catch (err) {
-                console.log('emit failed', err);
-              }
-            },
-            callDuringReplay: false,
-          },
-        },
-      };
+      workerSocket.on('connect_error', (err) => {
+        console.log('snake worker socket connection error', err);
+      });
 
       const worker = await Worker.create({
         connection,
         namespace,
         ...workflowBundleOptions(),
         taskQueue: 'snakes',
-        activities: { snakeNom },
+        activities: buildGameActivities(socketHost),
         identity,
-        sinks,
         stickyQueueScheduleToStartTimeout: 250,
       })
 
       const heartbeater = setInterval(heartbeat, 500);
 
-      await worker.runUntil(cancelled())
+      worker.numRunningWorkflowInstances$.subscribe((count) => {
+        workerSocket.emit('workflow:instances', { identity, count });
+      });
 
-      console.log('Worker shutdown', { cancelled: CancellationScope.current().consideredCancelled });
-
-      clearInterval(heartbeater);
+      try {
+        await worker.runUntil(cancelled())
+      } finally {
+        clearInterval(heartbeater);
+      }
     },
   }
 }
@@ -80,13 +52,21 @@ export type Event = {
   payload: any;
 };
 
-export async function emit(events: Event[]) {
-  for (const event of events) {
-    socket.emit(event.type, event.payload);
-  }
-};
+export function buildGameActivities(socketHost: string) {
+  const socket = io(socketHost);
+  socket.on('connect_error', (err) => {
+    console.log('game activity socket connection error', err);
+  });
 
-export async function snakeNom(snakeId: string, durationMs: number) {
-  await new Promise((resolve) => setTimeout(resolve, durationMs));
-  socket.emit('snakeNom', { snakeId });
+  return {
+    emit: async function(events: Event[]) {
+      for (const event of events) {
+        socket.emit(event.type, event.payload);
+      }
+    },
+    snakeNom: async function(snakeId: string, durationMs: number) {
+      await new Promise((resolve) => setTimeout(resolve, durationMs));
+      socket.emit('snakeNom', { snakeId });
+    }
+  }
 };

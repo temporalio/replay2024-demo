@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import { Worker, NativeConnection } from '@temporalio/worker';
-import { Env, getEnv } from './interfaces/env';
-import * as activities from './activities';
+import { Env, getEnv, requiredEnv } from './interfaces/env';
+import { buildGameActivities } from './activities';
 
 /**
  * Run a Worker with an mTLS connection, configuration is provided via environment variables.
@@ -52,9 +52,8 @@ async function run({
     workflowsPath: require.resolve('./workflows'),
     identity: 'game-worker',
     taskQueue,
-    activities: activities,
+    activities: buildGameActivities(requiredEnv('SOCKETIO_HOST')),
   });
-  console.log('Worker connection successfully established');
 
   await worker.run();
   await connection.close();
