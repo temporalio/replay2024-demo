@@ -138,6 +138,9 @@ const webSocketServer = {
 
 		io.on('connection', (socket) => {
 			// Game -> Player UI
+			socket.on('roundLoading', ({ round }) => {
+				io.emit('roundLoading', { round });
+			});
 			socket.on('roundStarted', ({ round }) => {
 				io.emit('roundStarted', { round });
 			});
@@ -174,6 +177,7 @@ const webSocketServer = {
 				try {
 					const round = await temporal.workflow.getHandle(ROUND_WORKFLOW_ID).query<Round>('roundState');
 					if (round && !round.finished) {
+						socket.emit('roundLoading', { round });
 						socket.emit('roundStarted', { round });
 					} else {
 						socket.emit('roundNotFound');

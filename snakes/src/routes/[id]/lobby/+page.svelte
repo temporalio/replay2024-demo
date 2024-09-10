@@ -14,6 +14,8 @@
 	let bluePlayers = 0;
 	let redScore = 0;
 	let blueScore = 0;
+	let orangePlayers = 0;
+	let orangeScore = 0;
 	let baseURL = '';
 
 	const startRound = () => {
@@ -25,6 +27,8 @@
 		redScore = lobby.teams.red?.score || 0;
 		bluePlayers = lobby.teams.blue?.players || 0;
 		blueScore = lobby.teams.blue?.score || 0;
+		orangePlayers = lobby.teams.orange?.players || 0;
+		orangeScore = lobby.teams.orange?.score || 0;
 	});
 
 	onMount(() => {
@@ -38,6 +42,11 @@
 </svelte:head>
 
 <section class="w-screen">
+	<div class="flex flex-col md:flex-row gap-16 justify-center px-8">
+		<div class="flex justify-center items-center flex-col">
+			<h1 class="retro">Lobby</h1>
+		</div>
+	</div>
 	<div class="flex flex-col md:flex-row gap-16 justify-center px-8">
 		<div class="border-red-500 border-4 rounded-xl p-4 text-white">
 			<QR
@@ -57,10 +66,6 @@
 				</div>
 			</div>
 		</div>
-		<div class="flex justify-center items-center flex-col gap-4">
-			<h1 class="retro">Lobby</h1>
-			<button class="retro" on:click={startRound}>Start Round</button>		
-		</div>	
 		<div class="border-blue-500 border-4 rounded-xl p-4 text-white">
 			<QR
 				data="{baseURL}/{workflowId}/team/blue"
@@ -78,6 +83,29 @@
 					Score: {blueScore}
 				</div>
 			</div>
+		</div>
+		<div class="border-orange-500 border-4 rounded-xl p-4 text-white">
+			<QR
+				data="{baseURL}/{workflowId}/team/orange"
+				moduleFill="orange"
+				anchorOuterFill="orange"
+				anchorInnerFill="orange"
+				width="100%"
+			/>
+			<div class="text-center">
+				<a class="text-orange-600 text-2xl font-bold" href="{baseURL}/{workflowId}/team/orange">ORANGE TEAM</a>
+				<div class="text-xl" id="orange-players">
+					Players: {orangePlayers}
+				</div>
+				<div class="text-xl" id="orange-score">
+					Score: {orangeScore}
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="flex flex-col md:flex-row gap-16 justify-center px-8">
+		<div class="flex justify-center items-center flex-col gap-4 py-8">
+			<button class="retro" on:click={startRound}>Start Round</button>
 		</div>
 	</div>
 </section>

@@ -24,7 +24,7 @@ const APPLE_POINTS = 10;
 const SNAKE_MOVES_BEFORE_CAN = 500;
 const SNAKE_WORKER_DOWN_TIME = '5 seconds';
 
-const { emit, roundStartedNotification, roundFinishedNotification } = proxyLocalActivities<typeof activities>({
+const { emit } = proxyLocalActivities<typeof activities>({
   startToCloseTimeout: '1 seconds',
 });
 
@@ -42,6 +42,7 @@ type GameConfig = {
   snakesPerTeam: number;
   nomsPerMove: number;
   nomDuration: number;
+  killWorkers: boolean;
 };
 
 type Game = {
@@ -208,13 +209,24 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
 
   randomizeRound(round);
 
-  try {
-    await startWorkerManagers(snakes.length * 2);
-    await startSnakes(round.config, round.snakes);
+  const workerCount = snakes.length * 2;
 
+  try {
+    await startWorkerManagers(workerCount);
+    await startSnakes(round.config, round.snakes);
+    await emit([{ type: 'roundLoading', payload: { round } }]);
+
+    // Wait for all workers to register
+    await condition(() => workersStarted.length === workerCount);
+    for (const workerId of workersStarted) {
+      round.apples[workerId] = randomEmptyPoint(round);
+    }
+    workersStarted.length = 0;
+
+    // Start the round
     round.startedAt = Date.now();
     sleep(duration * 1000).then(() => round.finished = true);
-    await roundStartedNotification(round)
+    await emit([{ type: 'roundStarted', payload: { round } }]);
 
     while (!round.finished) {
       await condition(() => snakeMoves.length > 0 || workersStarted.length > 0);
@@ -235,8 +247,12 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
       }
 
       for (const appleId of applesEaten) {
-        const worker = getExternalWorkflowHandle(appleId);
-        signals.push(worker.signal(workerStopSignal));
+        if (config.killWorkers) {
+          const worker = getExternalWorkflowHandle(appleId);
+          signals.push(worker.signal(workerStopSignal));
+        } else {
+          workersStarted.push(appleId);
+        }
         delete round.apples[appleId];
       }
 
@@ -257,7 +273,7 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
     round.finished = true;
   }
 
-  await roundFinishedNotification(round);
+  await emit([{ type: 'roundFinished', payload: { round } }]);
 
   log.info('Round ended');
 

@@ -39,9 +39,9 @@ export default class SnakeBody {
 			y -= (length - 1);
 		} else if (segment.direction === 'left') {
 			w = length;
-			x -= (length - 1);
 		} else {
 			w = length;
+			x -= (length - 1);
 		}
 
 		return { x, y, w, h };

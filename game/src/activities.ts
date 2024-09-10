@@ -64,7 +64,7 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
         stickyQueueScheduleToStartTimeout: 250,
       })
 
-      const heartbeater = setInterval(heartbeat, 250);
+      const heartbeater = setInterval(heartbeat, 500);
 
       await worker.runUntil(cancelled())
 
@@ -76,7 +76,7 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
 }
 
 export type Event = {
-  type: 'snakeNom' | 'snakeMoved' | 'roundStarted' | 'roundUpdate' | 'roundFinished';
+  type: 'snakeMoved' | 'roundLoading' | 'roundStarted' | 'roundUpdate' | 'roundFinished';
   payload: any;
 };
 
@@ -89,20 +89,4 @@ export async function emit(events: Event[]) {
 export async function snakeNom(snakeId: string, durationMs: number) {
   await new Promise((resolve) => setTimeout(resolve, durationMs));
   socket.emit('snakeNom', { snakeId });
-};
-
-export async function snakeMovedNotification(snake: Snake) {
-  socket.emit('snakeMoved', { snakeId: snake.id, segments: snake.segments });
-};
-
-export async function roundStartedNotification(round: Round) {
-  socket.emit('roundStarted', { round });
-};
-
-export async function roundUpdateNotification(round: Round) {
-  socket.emit('roundUpdate', { round });
-};
-
-export async function roundFinishedNotification(round: Round) {
-  socket.emit('roundFinished', { round });
 };

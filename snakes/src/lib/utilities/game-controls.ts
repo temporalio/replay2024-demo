@@ -21,10 +21,11 @@ const terminateGame = async () => {
 const input = {
   width: 25,
   height: 25,
-  snakesPerTeam: 2,
-  teamNames: ['red', 'blue'],
+  snakesPerTeam: 1,
+  teamNames: ['red', 'blue', 'orange'],
   nomsPerMove: 1,
-  nomDuration: 200, // steve testing slower noms
+  nomDuration: 250,
+  killWorkers: false,
 };
 
 const startNewGame = async () => {

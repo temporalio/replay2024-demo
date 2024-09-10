@@ -17,15 +17,18 @@
 	let snakeCanvases: Record<string, HTMLCanvasElement> = {};
 
 	let waitingForPlayers = false;
+	let roundLoading = false;
 	let roundOver = false;
 	let redScore = 0;
 	let blueScore = 0;
+	let orangeScore = 0;
 	let timeLeft = 0;
 
 	let timerInterval: NodeJS.Timeout | undefined;
 	let demoInterval: NodeJS.Timeout | undefined;
 
 	const loadRound = (round: Round) => {
+		roundLoading = true;
 		roundOver = false;
 
 		board = new SnakeBoard(boardCanvas, appleCanvas, round);
@@ -37,6 +40,12 @@
 		if (round.startedAt) {
 			timeLeft -= Math.floor((Date.now() - round.startedAt) / 1000);
 		}
+	}
+
+	const startRound = (round: Round) => {
+		roundLoading = false;
+		board.update(round);
+
 		timerInterval = setInterval(updateTimer, 1000);
 
 		if (isDemo) {
@@ -47,6 +56,7 @@
 	const updateRound = (round: Round) => {
 		redScore = round.teams['red'].score || 0;
 		blueScore = round.teams['blue'].score || 0;
+		orangeScore = round.teams['orange'].score || 0;
 
 		board.update(round);
 	};
@@ -60,11 +70,11 @@
 		demoInterval = undefined;
 	};
 
-	const startRound = async () => {
+	const startNewRound = async () => {
 		waitingForPlayers = true;
 		const players = await lobbySocket.emitWithAck('findPlayers', {
-			teams: ['red', 'blue'],
-			playersPerTeam: 2
+			teams: ['red', 'blue', 'orange'],
+			playersPerTeam: 1
 		});
 		waitingForPlayers = false;
 
@@ -80,12 +90,11 @@
 		socket.emit('roundStart', { duration: 60, snakes });
 	};
 
-	const startDemoRound = () => {
+	const startNewDemoRound = () => {
 		const snakes: Snake[] = [
 			{ id: 'red-0', playerId: 'Alex', teamName: 'red', segments: [] },
-			{ id: 'red-1', playerId: 'Rob', teamName: 'red', segments: [] },
 			{ id: 'blue-0', playerId: 'Candance', teamName: 'blue', segments: [] },
-			{ id: 'blue-1', playerId: 'Steve', teamName: 'blue', segments: [] }
+			{ id: 'orange-1', playerId: 'Steve', teamName: 'orange', segments: [] }
 		];
 		socket.emit('roundStart', { duration: 60, snakes });
 	};
@@ -105,8 +114,14 @@
 			}
 		});
 
-		socket.on('roundStarted', ({ round }: { round: Round }) => {
+		socket.on('roundLoading', ({ round }: { round: Round }) => {
+			roundLoading = true;
 			loadRound(round);
+		});
+
+		socket.on('roundStarted', ({ round }: { round: Round }) => {
+			roundLoading = false;
+			startRound(round);
 		});
 
 		socket.on('roundUpdate', ({ round }: { round: Round }) => {
@@ -116,15 +131,15 @@
 		socket.on('roundFinished', ({ round }: { round: Round }) => {
 			finishRound(round);
 			if (isDemo) {
-				startDemoRound();
+				startNewDemoRound();
 			}
 		});
 
 		socket.on('roundNotFound', async () => {
 			if (isDemo) {
-				startDemoRound();
+				startNewDemoRound();
 			} else {
-				await startRound();
+				await startNewRound();
 			}
 		});
 
@@ -209,6 +224,9 @@
 		<h2 class="retro">Round Over</h2>
 		<p class="retro"><a class="text-white" href={`/SnakeGame/lobby`}>&larr; Back to Lobby</a></p>
 	{/if}
+	{#if roundLoading}
+		<h2 class="retro">Loading...</h2>
+	{/if}
 </div>
 <div id="game">
 	<canvas id="board" bind:this={boardCanvas} />
@@ -218,11 +236,14 @@
 	<canvas bind:this={snakeCanvases['red-1']} />
 	<canvas bind:this={snakeCanvases['blue-0']} />
 	<canvas bind:this={snakeCanvases['blue-1']} />
+	<canvas bind:this={snakeCanvases['orange-0']} />
+	<canvas bind:this={snakeCanvases['orange-1']} />
 </div>
 <div id="score">
 	<div class="retro" id="time">{timeLeft}</div>
 	<div class="retro" id="blue">{blueScore}</div>
 	<div class="retro" id="red">{redScore}</div>
+	<div class="retro" id="orange">{orangeScore}</div>
 </div>
 
 <style lang="postcss">
@@ -259,5 +280,9 @@
 
 	#red {
 		@apply bg-[red] py-5;
+	}
+
+	#orange {
+		@apply bg-[orange] py-5;
 	}
 </style>
