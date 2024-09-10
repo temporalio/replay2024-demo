@@ -12,16 +12,13 @@ const workflowBundleOptions = () =>
     : { workflowsPath: require.resolve('./workflows') };
 
 export function buildWorkerActivities(namespace: string, connection: NativeConnection, socketHost: string) {
+  const workerSocket = io(`${socketHost}/workers`);
+  workerSocket.on('connect_error', (err) => {
+    console.log('snake worker host socket connection error', err);
+  });
+
   return {
     snakeWorker: async (identity: string) => {
-      const workerSocket = io(`${socketHost}/workers`, {
-        auth: { identity }
-      });
-
-      workerSocket.on('connect_error', (err) => {
-        console.log('snake worker socket connection error', err);
-      });
-
       const worker = await Worker.create({
         connection,
         namespace,
@@ -35,12 +32,14 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
       const heartbeater = setInterval(heartbeat, 500);
 
       worker.numRunningWorkflowInstances$.subscribe((count) => {
-        workerSocket.emit('workflow:instances', { identity, count });
+        workerSocket.emit('worker:workflows', { identity, count });
       });
 
       try {
+        workerSocket.emit('worker:start', { identity });
         await worker.runUntil(cancelled())
       } finally {
+        workerSocket.emit('worker:stop', { identity });
         clearInterval(heartbeater);
       }
     },

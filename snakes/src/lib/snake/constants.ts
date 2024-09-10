@@ -12,7 +12,7 @@ export const GAME_CONFIG: GameConfig = {
   snakesPerTeam: 1,
   teamNames: ['red', 'blue', 'orange'],
   nomsPerMove: 1,
-  nomDuration: 250,
+  nomDuration: 200,
   nomActivity: false,
   killWorkers: true,
 };

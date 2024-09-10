@@ -205,9 +205,16 @@ const webSocketServer = {
 		const workerIO = io.of("/workers");
 
 		workerIO.on('connection', (socket) => {
-			socket.on('workflow:instances', ({ identity, count }) => {
-				console.log('workflow:instances', { identity, count });
-				workerIO.emit('workflow:instances', { identity, count });
+			socket.on('worker:start', ({ identity }) => {
+				workerIO.emit('worker:start', { identity });
+			});
+
+			socket.on('worker:workflows', ({ identity, count }) => {
+				workerIO.emit('worker:workflows', { identity, count });
+			});
+
+			socket.on('worker:stop', ({ identity }) => {
+				workerIO.emit('worker:stop', { identity });
 			});
 		});
 	}

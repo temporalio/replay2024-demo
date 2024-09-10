@@ -10,6 +10,7 @@
 
 	let socket: Socket;
 	let lobbySocket: Socket;
+	let workerSocket: Socket;
 
 	let board: SnakeBoard;
 	let boardCanvas: HTMLCanvasElement;
@@ -20,8 +21,11 @@
 	let waitingForPlayers = false;
 	let roundLoading = false;
 	let roundOver = false;
+
 	let scores: Record<string, number> = {};
 	let timeLeft = 0;
+
+	let workers: Record<string, string | number> = {};
 
 	let timerInterval: NodeJS.Timeout | undefined;
 	let demoInterval: NodeJS.Timeout | undefined;
@@ -107,6 +111,7 @@
 	onMount(async () => {
 		socket = io();
 		lobbySocket = io('/lobby');
+		workerSocket = io('/workers');
 
 		socket.on('connect_error', (error) => {
 			if (socket.active) {
@@ -150,6 +155,18 @@
 		});
 
 		socket.emit('fetchRound');
+
+		workerSocket.on('worker:start', ({ identity }) => {
+			workers[identity] = '▶'
+		});
+
+		workerSocket.on('worker:workflows', ({ identity, count }) => {
+			workers[identity] = count > 0 ? '🐍'.repeat(count) : '😴';
+		});
+
+		workerSocket.on('worker:stop', ({ identity }) => {
+			workers[identity] = '⏹️';
+		});
 	});
 
 	const moveTowardApple = (snake: Snake) => {
@@ -246,6 +263,11 @@
 		<div class="retro" id={team}>{scores[team] || 0}</div>
 	{/each}
 </div>
+<div id="workers">
+	{#each Object.entries(workers) as [id, state] (id)}
+		<div>{state}</div>
+	{/each}
+</div>
 
 <style lang="postcss">
 	#game {
@@ -259,7 +281,7 @@
 		position: absolute;
 		top: 14px;
 		left: 14px;
-		width: calc(95vw - 28px);
+		width: calc(90vw - 28px);
 		height: calc(100vh - 28px);
 		overflow: hidden;
 	}
@@ -268,22 +290,30 @@
 	}
 
 	#score {
-		@apply absolute top-0 right-0 w-[5vw] flex flex-col gap-0 text-3xl text-center text-white overflow-hidden;
+		@apply absolute top-0 right-0 w-[10vw] flex flex-col gap-0 text-3xl text-center text-white overflow-hidden;
+	}
+
+	#score .retro {
+		font-size: 2rem;
 	}
 
 	#time {
-		@apply bg-white py-5 text-black;
+		@apply bg-white py-4 text-black;
 	}
 
 	#blue {
-		@apply bg-[blue] py-5;
+		@apply bg-[blue] py-4;
 	}
 
 	#red {
-		@apply bg-[red] py-5;
+		@apply bg-[red] py-4;
 	}
 
 	#orange {
-		@apply bg-[orange] py-5;
+		@apply bg-[orange] py-4;
+	}
+
+	#workers {
+		@apply bg-[green] absolute bottom-0 right-0 w-[10vw] flex flex-col gap-0 text-3xl text-center text-white overflow-hidden;
 	}
 </style>

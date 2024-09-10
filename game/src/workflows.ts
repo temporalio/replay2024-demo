@@ -326,20 +326,24 @@ export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomAc
     direction = newDirection;
   });
 
-  const { snakeNom } = proxyActivities<ReturnType <typeof buildGameActivities>>({
-    startToCloseTimeout: nomDuration * 2,
-  });
+  let snakeNom: (id: string, duration: number) => Promise<void>;
+
+  if (nomActivity) {
+    snakeNom = proxyActivities<ReturnType <typeof buildGameActivities>>({
+      startToCloseTimeout: nomDuration * 2,
+    }).snakeNom;
+  } else {
+    snakeNom = proxyLocalActivities<ReturnType <typeof buildGameActivities>>({
+      startToCloseTimeout: nomDuration * 2,
+    }).snakeNom;
+  }
 
   const round = getExternalWorkflowHandle(roundId);
   const noms = Array.from({ length: nomsPerMove });
   let moves = 0;
 
   while (true) {
-    if (nomActivity) {
-      await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
-    } else {
-      await sleep(nomDuration);
-    }
+    await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
     await round.signal(snakeMoveSignal, id, direction);
     if (moves++ > SNAKE_MOVES_BEFORE_CAN) {
       await continueAsNew<typeof SnakeWorkflow>({ roundId, id, direction, nomsPerMove, nomActivity, nomDuration });
