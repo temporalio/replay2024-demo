@@ -326,7 +326,7 @@ export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomAc
     direction = newDirection;
   });
 
-  const { snakeNom } = proxyActivities<typeof activities>({
+  const { snakeNom } = proxyActivities<ReturnType <typeof buildGameActivities>>({
     startToCloseTimeout: nomDuration * 2,
   });
 
@@ -508,6 +508,7 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
         roundId: ROUND_WF_ID,
         id: snake.id,
         direction: snake.segments[0].direction,
+        nomActivity: config.nomActivity,
         nomsPerMove: config.nomsPerMove,
         nomDuration: config.nomDuration,
       }]
