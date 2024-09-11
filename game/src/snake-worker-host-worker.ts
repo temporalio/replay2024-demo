@@ -1,6 +1,5 @@
-import fs from 'fs/promises';
-import { Worker, NativeConnection } from '@temporalio/worker';
-import { Env, getEnv, requiredEnv } from './interfaces/env';
+import { Worker } from '@temporalio/worker';
+import { createConnection, WorkerEnv, getEnv, requiredEnv } from './temporal';
 import { buildWorkerActivities } from './activities';
 
 /**
@@ -15,36 +14,8 @@ async function run({
   serverNameOverride,
   serverRootCACertificatePath,
   taskQueue,
-}: Env) {
-  let serverRootCACertificate: Buffer | undefined = undefined;
-  if (serverRootCACertificatePath) {
-    serverRootCACertificate = await fs.readFile(serverRootCACertificatePath);
-  }
-
-  let connection: NativeConnection;
-
-  if (clientCertPath && clientKeyPath) {
-    // mTLS configuration
-    const serverRootCACertificate = serverRootCACertificatePath
-      ? await fs.readFile(serverRootCACertificatePath)
-      : undefined;
-
-    connection = await NativeConnection.connect({
-      address,
-      tls: {
-        serverNameOverride,
-        serverRootCACertificate,
-        clientCertPair: {
-          crt: await fs.readFile(clientCertPath),
-          key: await fs.readFile(clientKeyPath),
-        },
-      },
-    });
-  }
-  else {
-    console.log(`Using unencrypted connection`);
-    connection = await NativeConnection.connect({ address: address });
-  }
+}: WorkerEnv) {
+  const connection = await createConnection({ address, clientCertPath, clientKeyPath, serverNameOverride, serverRootCACertificatePath });
 
   const worker = await Worker.create({
     connection,
@@ -59,7 +30,7 @@ async function run({
   await connection.close();
 }
 
-run(getEnv()).then(
+run(getEnv() as WorkerEnv).then(
   () => process.exit(0),
   (err) => {
     console.error(err);

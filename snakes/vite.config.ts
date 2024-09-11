@@ -2,7 +2,8 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { type ViteDevServer, defineConfig } from 'vite';
 import { Server } from 'socket.io';
 import { Client, WorkflowNotFoundError } from '@temporalio/client';
-import type { GameConfig, Lobby, Round, Snake } from '$lib/snake/types';
+import type { GameConfig, Lobby, Round, Snake } from './src/lib/snake/types';
+import { createConnection, getEnv } from './src/lib/server/temporal';
 
 const TEMPORAL_WORKFLOW_TYPE = 'GameWorkflow';
 const TEMPORAL_TASK_QUEUE = 'game'
@@ -84,7 +85,11 @@ const webSocketServer = {
 
 		const io = new Server(server.httpServer);
 		globalThis.io = io;
-		const temporal = new Client();
+		const clientEnv = getEnv();
+		const temporal = new Client({
+			namespace: clientEnv.namespace,
+			connection: createConnection(clientEnv)
+		});
 
 		const socketLobby: SocketLobby = { teams: {} };
 
