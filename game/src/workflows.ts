@@ -17,6 +17,7 @@ import {
 } from '@temporalio/workflow';
 
 import { buildGameActivities, buildWorkerActivities, Event } from './activities';
+import { GameConfig, Game, Teams, Round, Snake, Snakes, Direction, Point, Segment } from './types';
 
 const ROUND_WF_ID = 'SnakeGameRound';
 const APPLE_POINTS = 10;
@@ -33,64 +34,6 @@ const { snakeWorker } = proxyActivities<ReturnType<typeof buildWorkerActivities>
   heartbeatTimeout: 500,
   cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
 });
-
-type GameConfig = {
-  width: number;
-  height: number;
-  teamNames: string[];
-  snakesPerTeam: number;
-  nomsPerMove: number;
-  nomActivity: boolean;
-  nomDuration: number;
-  killWorkers: boolean;
-};
-
-type Game = {
-  config: GameConfig;
-  teams: Teams;
-};
-
-type Team = {
-  name: string;
-  score: number;
-};
-export type Teams = Record<string, Team>;
-
-export type Round = {
-  config: GameConfig;
-  apples: Apples;
-  teams: Teams;
-  snakes: Snakes;
-  duration: number;
-  startedAt?: number;
-  finished?: boolean;
-};
-
-type Apples = Record<string, Apple>;
-
-type Point = {
-  x: number;
-  y: number;
-};
-
-type Apple = Point;
-
-type Segment = {
-  head: Point;
-  direction: Direction;
-  length: number;
-};
-
-export type Snake = {
-  id: string;
-  playerId: string;
-  teamName: string;
-  segments: Segment[];
-  ateAppleId?: string;
-};
-type Snakes = Record<string, Snake>;
-
-type Direction = 'up' | 'down' | 'left' | 'right';
 
 function randomDirection(): Direction {
   const directions: Direction[] = ['up', 'down', 'left', 'right'];

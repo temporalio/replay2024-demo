@@ -39,6 +39,10 @@
 			Snakes[snake.id] = new SnakeBody(snakeCanvases[snake.id], round, snake);
 		}
 
+		for (const id of Object.keys(round.apples)) {
+			workers[id] = '?';
+		}
+
 		timeLeft = round.duration;
 		if (round.startedAt) {
 			timeLeft -= Math.floor((Date.now() - round.startedAt) / 1000);
@@ -157,14 +161,17 @@
 		socket.emit('fetchRound');
 
 		workerSocket.on('worker:start', ({ identity }) => {
+			console.log('Worker started:', identity);
 			workers[identity] = '▶';
 		});
 
 		workerSocket.on('worker:workflows', ({ identity, count }) => {
+			console.log('Worker count:', identity, count);
 			workers[identity] = count > 0 ? '🐍'.repeat(count) : '😴';
 		});
 
 		workerSocket.on('worker:stop', ({ identity }) => {
+			console.log('Worker stopped:', identity);
 			workers[identity] = '⏹️';
 		});
 	});

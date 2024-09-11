@@ -26,10 +26,10 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
         taskQueue: 'snakes',
         activities: buildGameActivities(socketHost),
         identity,
-        stickyQueueScheduleToStartTimeout: 250,
+        stickyQueueScheduleToStartTimeout: 200,
       })
 
-      const heartbeater = setInterval(heartbeat, 500);
+      const heartbeater = setInterval(heartbeat, 200);
 
       worker.numRunningWorkflowInstances$.subscribe((count) => {
         workerSocket.emit('worker:workflows', { identity, count });
