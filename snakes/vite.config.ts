@@ -207,7 +207,7 @@ const webSocketServer = {
 			socket.on('snakeChangeDirection', async ({ id, direction }) => {
 				try {
 					await temporal.workflow.getHandle(id).signal('snakeChangeDirection', direction);
-				} catch {}
+				} catch { }
 			});
 
 			socket.on('gameStart', async ({ config }: { config: GameConfig }, cb) => {
@@ -241,6 +241,23 @@ const webSocketServer = {
 						cb({ error: err});
 					}
 				}
+			});
+
+			socket.on('reset', async (cb) => {
+				try {
+					await temporal.workflow.getHandle(GAME_WORKFLOW_ID).terminate();
+				} catch { }
+				try {
+					await temporal.workflowService.deleteWorkflowExecution({ namespace: clientEnv.namespace, workflowExecution: { workflowId: GAME_WORKFLOW_ID } });
+				} catch { }
+				try {
+					await temporal.workflow.getHandle(ROUND_WORKFLOW_ID).terminate();
+				} catch { }
+				try {
+					await temporal.workflowService.deleteWorkflowExecution({ namespace: clientEnv.namespace, workflowExecution: { workflowId: ROUND_WORKFLOW_ID } });
+				} catch { }
+
+				cb({});
 			});
 		});
 

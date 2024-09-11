@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { io, Socket } from 'socket.io-client';
-	import type { Round, Snake } from '$lib/snake/types';
+	import type { Round, Snake, Direction } from '$lib/snake/types';
 	import SnakeBoard from '$lib/snake/SnakeBoard';
 	import SnakeBody from '$lib/snake/SnakeBody';
 	import { GAME_CONFIG, SNAKE_NUMBERS } from '$lib/snake/constants';
@@ -43,7 +43,7 @@
 		if (round.startedAt) {
 			timeLeft -= Math.floor((Date.now() - round.startedAt) / 1000);
 		}
-	}
+	};
 
 	const startRound = (round: Round) => {
 		roundLoading = false;
@@ -52,7 +52,7 @@
 		timerInterval = setInterval(updateTimer, 1000);
 
 		if (isDemo) {
-			demoInterval = setInterval(moveRandomSnake, 100);
+			demoInterval = setInterval(steerRandomSnake, 100);
 		}
 	};
 
@@ -157,7 +157,7 @@
 		socket.emit('fetchRound');
 
 		workerSocket.on('worker:start', ({ identity }) => {
-			workers[identity] = '▶'
+			workers[identity] = '▶';
 		});
 
 		workerSocket.on('worker:workflows', ({ identity, count }) => {
@@ -169,7 +169,7 @@
 		});
 	});
 
-	const moveTowardApple = (snake: Snake) => {
+	const moveTowardApple = (snake: Snake): Direction => {
 		const head = snake.segments[0]; // Assuming the first element is the snake's head
 
 		// Find the nearest apple
@@ -189,7 +189,7 @@
 		const deltaX = nearestApple.x - head.head.x;
 		const deltaY = nearestApple.y - head.head.y;
 
-		let preferredDirections = [];
+		let preferredDirections: Direction[] = [];
 
 		if (Math.abs(deltaX) > Math.abs(deltaY)) {
 			if (deltaX > 0) {
@@ -213,14 +213,23 @@
 		}
 
 		const direction = preferredDirections[Math.floor(Math.random() * preferredDirections.length)];
-		return direction;
+
+		// We have to go somewhere, so pick a random direction if we can't decide.
+		return direction || randomDirection();
 	};
 
-	const moveRandomSnake = () => {
+  const randomDirection = (): Direction => {
+    return ['up', 'left', 'right', 'down'][Math.floor(Math.random() * 4)] as Direction;
+  }
+
+	const steerRandomSnake = () => {
 		const snakes = Object.values(Snakes);
 		const snake = snakes[Math.floor(Math.random() * snakes.length)];
-		const direction = moveTowardApple(snake.snake);
-		socket.emit('snakeChangeDirection', { id: snake.id, direction });
+		const currentDirection = snake.snake.segments[0].direction;
+		const desiredDirection = moveTowardApple(snake.snake);
+		if (desiredDirection != currentDirection) {
+			socket.emit('snakeChangeDirection', { id: snake.id, direction: desiredDirection });
+		}
 	};
 
 	onDestroy(() => {

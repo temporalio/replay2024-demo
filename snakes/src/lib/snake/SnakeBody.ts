@@ -80,7 +80,7 @@ export default class SnakeBody {
 
 	draw() {
 		this.context.fillStyle = this.color;
-		this.snake.segments.forEach((segment, index) => {
+		this.snake.segments.forEach((segment) => {
 			let { x, y, w, h } = this.calculateRect(segment);
 			this.context.fillRect(x, y, w, h);
 		});
