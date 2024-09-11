@@ -86,7 +86,12 @@ export default class SnakeBody {
 			this.context.fillRect(x, y, w, h);
 
 			if (head) {
-        this.drawEyes(segment.head, segment.direction);
+				try {
+					this.drawEyes(segment.head, segment.direction);
+				} catch (err) {
+					console.log('Error drawing eyes', err);
+					console.log('snake', this.snake);
+				}
 			}
 		});
 	}

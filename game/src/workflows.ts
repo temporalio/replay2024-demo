@@ -16,7 +16,6 @@ import {
   isCancellation,
 } from '@temporalio/workflow';
 
-import type * as activities from './activities';
 import { buildGameActivities, buildWorkerActivities, Event } from './activities';
 
 const ROUND_WF_ID = 'SnakeGameRound';
