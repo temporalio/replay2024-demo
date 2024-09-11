@@ -1,8 +1,11 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { type ViteDevServer, defineConfig } from 'vite';
 import { Server } from 'socket.io';
-import { Client } from '@temporalio/client';
-import type { Lobby, Round, Snake } from '$lib/snake/types';
+import { Client, WorkflowNotFoundError } from '@temporalio/client';
+import type { GameConfig, Lobby, Round, Snake } from '$lib/snake/types';
+
+const TEMPORAL_WORKFLOW_TYPE = 'GameWorkflow';
+const TEMPORAL_TASK_QUEUE = 'game'
 
 const GAME_WORKFLOW_ID = 'SnakeGame';
 const ROUND_WORKFLOW_ID = 'SnakeGameRound';
@@ -163,11 +166,12 @@ const webSocketServer = {
 
 			// Player UI -> Game
 			socket.on('roundStart', async ({ duration, snakes }: { duration: number, snakes: Snake[] }) => {
+				const game = temporal.workflow.getHandle(GAME_WORKFLOW_ID);
 				try {
 					console.log('roundStart', { duration, snakes });
-					await temporal.workflow.getHandle(GAME_WORKFLOW_ID).signal('roundStart', { duration, snakes });
+					await game.signal('roundStart', { duration, snakes });
 				} catch (err) {
-					console.error(err);
+					console.error('roundStart error', err);
 				}
 				for (const snake of snakes) {
 					lobbyIO.to(`player-${snake.playerId}`).emit('roundPlaying', { snake });
@@ -199,6 +203,39 @@ const webSocketServer = {
 				try {
 					await temporal.workflow.getHandle(id).signal('snakeChangeDirection', direction);
 				} catch {}
+			});
+
+			socket.on('gameStart', async ({ config }: { config: GameConfig }, cb) => {
+				try {
+					const wf = await temporal.workflow.start(
+						TEMPORAL_WORKFLOW_TYPE,
+						{
+							workflowId: GAME_WORKFLOW_ID,
+							taskQueue: TEMPORAL_TASK_QUEUE,
+							args: [config],
+						},
+					);
+					cb({ workflowId: wf.workflowId });
+				} catch (err) {
+					console.error('gameStart error', err);
+					cb({ error: err });
+				}
+			});
+
+			socket.on('gameFinish', async (cb) => {
+				const game = temporal.workflow.getHandle(GAME_WORKFLOW_ID);
+				try {
+					await game.signal('gameFinish');
+					await game.result();
+					cb({});
+				} catch (err) {
+					if (err instanceof WorkflowNotFoundError) {
+						cb({});
+					} else {
+						console.log('gameFinish error', err);
+						cb({ error: err});
+					}
+				}
 			});
 		});
 

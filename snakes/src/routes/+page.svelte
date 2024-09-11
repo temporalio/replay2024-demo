@@ -1,25 +1,35 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { startGame } from '$lib/utilities/game-controls';
+	import { io } from 'socket.io-client';
+	import { GAME_CONFIG } from '$lib/snake/constants';
 
 	let loading = false;
 	const beginGame = async ({ demo }: { demo: Boolean }) => {
+		const socket = io();
+
 		loading = true
-		try {
-			const workflowId = await startGame();
-			if (!workflowId) {
-				alert('Failed to start game');
-				return;
-			}
-			if (demo) {
-				goto(`/${workflowId}/demo`);
-			} else {
-				goto(`/${workflowId}/lobby`);
-			}
-		} catch (e) {
-			alert('Failed to start game');
-		} finally {
+		console.log('Stopping game');
+		const finish = await socket.emitWithAck('gameFinish');
+		console.log('finish', finish);
+		if (finish.error) {
+			alert('Failed to stop game');
+			console.log('gameStop error', finish.error);
 			loading = false;
+			return;
+		}
+		console.log('Starting game');
+		const start = await socket.emitWithAck('gameStart', { config: GAME_CONFIG });
+		if (start.error) {
+			alert('Failed to start game');
+			console.log('gameStart error', start.error);
+			loading = false;
+			return;
+		}
+		const workflowId = start.workflowId;
+		if (demo) {
+			goto(`/${workflowId}/demo`);
+		} else {
+			goto(`/${workflowId}/lobby`);
 		}
 	};
 </script>

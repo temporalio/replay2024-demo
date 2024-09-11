@@ -112,6 +112,8 @@ function oppositeDirection(direction: Direction): Direction {
 export const gameStateQuery = defineQuery<Game>('gameState');
 export const roundStateQuery = defineQuery<Round>('roundState');
 
+export const gameFinishSignal = defineSignal('gameFinish');
+
 type RoundStartSignal = {
   snakes: Snake[];
   duration: number;
@@ -142,9 +144,16 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
       return acc;
     }, {}),
   };
+  let finished = false;
+  let roundScope: CancellationScope;
 
   setHandler(gameStateQuery, () => {
     return game;
+  });
+
+  setHandler(gameFinishSignal, () => {
+    finished = true;
+    roundScope?.cancel();
   });
 
   let newRound: RoundWorkflowInput | undefined;
@@ -152,18 +161,27 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
     newRound = { config, teams: buildRoundTeams(game), duration, snakes };
   });
 
-  while (true) {
+  while (!finished) {
     await condition(() => newRound !== undefined);
-    const roundWf = await startChild(RoundWorkflow, {
-      workflowId: ROUND_WF_ID,
-      args: [newRound!],
-      parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_REQUEST_CANCEL,
-    });
-    newRound = undefined;
-    const round = await roundWf.result();
 
-    for (const team of Object.values(round.teams)) {
-      game.teams[team.name].score += team.score;
+    roundScope = new CancellationScope();
+
+    try {
+      await roundScope.run(async () => {
+        const roundWf = await startChild(RoundWorkflow, {
+          workflowId: ROUND_WF_ID,
+          args: [newRound!],
+          parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_REQUEST_CANCEL,
+        });
+        newRound = undefined;
+
+        const round = await roundWf.result();
+        for (const team of Object.values(round.teams)) {
+          game.teams[team.name].score += team.score;
+        }
+      });
+    } catch (err) {
+      if (!isCancellation(err)) { throw(err); }
     }
   }
 }
@@ -189,6 +207,7 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
     apples: {},
     teams: teams,
     snakes: snakes.reduce<Snakes>((acc, snake) => { acc[snake.id] = snake; return acc; }, {}),
+    finished: false,
   };
 
   const snakeMoves: SnakeMove[] = [];
@@ -199,13 +218,55 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
   });
 
   setHandler(snakeMoveSignal, async (id, direction) => {
+    if (round.finished) { return; }
     snakeMoves.push({ id, direction });
   });
 
   setHandler(workerStartedSignal, async ({ identity }) => {
+    if (round.finished) { return; }
     workersStarted.push(identity);
     round.apples[identity] = randomEmptyPoint(round);
   });
+
+  const processSignals = async () => {
+    const events: Event[] = [];
+    const applesEaten: string[] = [];
+    const signals = [];
+
+    for (const move of snakeMoves) {
+      const snake = round.snakes[move.id];
+      moveSnake(round, snake, move.direction);
+      events.push({ type: 'snakeMoved', payload: { snakeId: move.id, segments: snake.segments } });
+      if (snake.ateAppleId) {
+        applesEaten.push(snake.ateAppleId);
+        round.teams[snake.teamName].score += APPLE_POINTS;
+        snake.ateAppleId = undefined;
+      }
+    }
+
+    for (const appleId of applesEaten) {
+      if (config.killWorkers) {
+        const worker = getExternalWorkflowHandle(appleId);
+        signals.push(worker.signal(workerStopSignal));
+      } else {
+        workersStarted.push(appleId);
+      }
+      delete round.apples[appleId];
+    }
+
+    for (const workerId of workersStarted) {
+      round.apples[workerId] = randomEmptyPoint(round);
+    }
+
+    if (applesEaten.length || workersStarted.length) {
+      events.push({ type: 'roundUpdate', payload: { round } });
+    }
+
+    snakeMoves.length = 0;
+    workersStarted.length = 0;
+
+    await Promise.all([emit(events), ...signals]);
+  }
 
   randomizeRound(round);
 
@@ -225,57 +286,37 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
 
     // Start the round
     round.startedAt = Date.now();
-    sleep(duration * 1000).then(() => round.finished = true);
+
+    Promise.race([
+      sleep(duration * 1000),
+      CancellationScope.current().cancelRequested,
+    ])
+    .then(() => log.info('Round timer expired'))
+    .catch(() => log.info('Round cancelled'))
+    .finally(() => round.finished = true);
+
+    log.info('Round started', { round });
     await emit([{ type: 'roundStarted', payload: { round } }]);
 
-    while (!round.finished) {
-      await condition(() => snakeMoves.length > 0 || workersStarted.length > 0);
+    while (true) {
+      await condition(() => round.finished || snakeMoves.length > 0 || workersStarted.length > 0);
+      if (round.finished) { break; }
 
-      const events: Event[] = [];
-      const applesEaten: string[] = [];
-      const signals = [];
-
-      for (const move of snakeMoves) {
-        const snake = round.snakes[move.id];
-        moveSnake(round, snake, move.direction);
-        events.push({ type: 'snakeMoved', payload: { snakeId: move.id, segments: snake.segments } });
-        if (snake.ateAppleId) {
-          applesEaten.push(snake.ateAppleId);
-          round.teams[snake.teamName].score += APPLE_POINTS;
-          snake.ateAppleId = undefined;
-        }
-      }
-
-      for (const appleId of applesEaten) {
-        if (config.killWorkers) {
-          const worker = getExternalWorkflowHandle(appleId);
-          signals.push(worker.signal(workerStopSignal));
-        } else {
-          workersStarted.push(appleId);
-        }
-        delete round.apples[appleId];
-      }
-
-      for (const workerId of workersStarted) {
-        round.apples[workerId] = randomEmptyPoint(round);
-      }
-
-      if (applesEaten.length || workersStarted.length) {
-        events.push({ type: 'roundUpdate', payload: { round } });
-      }
-
-      snakeMoves.length = 0;
-      workersStarted.length = 0;
-
-      await Promise.all([emit(events), ...signals]);
+      await processSignals();
+    }
+  } catch (err) {
+    if (!isCancellation(err)) {
+      throw(err);
     }
   } finally {
     round.finished = true;
   }
 
-  await emit([{ type: 'roundFinished', payload: { round } }]);
+  await CancellationScope.nonCancellable(async () => {
+    await emit([{ type: 'roundFinished', payload: { round } }]);
+  });
 
-  log.info('Round ended');
+  log.info('Round finished', { round });
 
   return round;
 }
