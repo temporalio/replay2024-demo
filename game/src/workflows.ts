@@ -427,7 +427,7 @@ function moveSnake(round: Round, snake: Snake, direction: Direction) {
   }
 
   // Check if we've hit another snake
-  if (snakeAt(round, newHead, snake)) {
+  if (snakeAt(round, newHead)) {
     // Truncate the snake to just the head, and ignore the requested move
     headSegment.length = 1;
     snake.segments = [headSegment];
@@ -477,34 +477,30 @@ function appleAt(round: Round, point: Point): string | undefined {
   return undefined;
 }
 
-function calculateRect(segment: Segment): { x1: number, x2: number, y1: number, y2: number } {
+function calculatePosition(segment: Segment): { t: number, l: number, b: number, r: number } {
   const { direction, head: start, length } = segment;
-  let x = [];
-  let y = [];
+  let [t, b] = [start.y, start.y];
+  let [l, r] = [start.x, start.x];
 
-  if (direction === 'up' || direction === 'down') {
-    x = [start.x, start.x];
-    y = [start.y, start.y + ((length - 1) * (direction === 'up' ? 1 : -1))];
+  if (direction === 'up') {
+    b = t + (length - 1);
+  } else if (direction === 'down') {
+    t = b - (length - 1);
+  } else if (direction === 'left') {
+    r = l + (length - 1);
   } else {
-    x = [start.x, start.x + ((length - 1) * (direction === 'right' ? 1 : -1))];
-    y = [start.y, start.y];
+    l = r - (length - 1);
   }
 
-  x.sort((a, b) => a - b);
-  y.sort((a, b) => a - b);
-
-  return { x1: x[0], x2: x[1], y1: y[0], y2: y[1] };
+  return { t, l, b, r };
 }
 
-function snakeAt(round: Round, point: Point, skipSnake: Snake | null): Snake | undefined {
+function snakeAt(round: Round, point: Point): Snake | undefined {
   for (const snake of Object.values(round.snakes)) {
-    if (snake === skipSnake) {
-      continue;
-    }
     for (const segment of snake.segments) {
-      const rect = calculateRect(segment);
+      const pos = calculatePosition(segment);
 
-      if (point.x >= rect.x1 && point.x <= rect.x2 && point.y >= rect.y1 && point.y <= rect.y2) {
+      if (point.x >= pos.l && point.x <= pos.r && point.y >= pos.t && point.y <= pos.b) {
         return snake;
       }
     }
@@ -516,7 +512,7 @@ function snakeAt(round: Round, point: Point, skipSnake: Snake | null): Snake | u
 function randomEmptyPoint(round: Round): Point {
   let point = { x: Math.ceil(Math.random() * round.config.width), y: Math.ceil(Math.random() * round.config.height) };
   // Check if any apple is at the point
-  while (appleAt(round, point) || snakeAt(round, point, null)) {
+  while (appleAt(round, point) || snakeAt(round, point)) {
     point = { x: Math.ceil(Math.random() * round.config.width), y: Math.ceil(Math.random() * round.config.height) };
   }
   return point;
