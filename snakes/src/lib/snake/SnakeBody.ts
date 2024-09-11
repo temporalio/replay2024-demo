@@ -57,18 +57,18 @@ export default class SnakeBody {
 		this.draw();
 	}
 
-	drawEyes(head: Point, direction: Direction) {
+	drawEyes(segment: Segment) {
 		const locations: Record<Direction, [[number, number], [number, number]]> = {
 			"up": [[0.25, 0.25],[0.75, 0.25]],
 			"down": [[0.25, 0.75],[0.75, 0.75]],
 			"left": [[0.25, 0.25],[0.25, 0.75]],
 			"right": [[0.75, 0.25],[0.75, 0.75]],
 		};
-		const location = locations[direction];
+		const location = locations[segment.direction];
 		this.context.lineWidth = 0.05;
 		this.context.save();
 		this.context.strokeStyle = this.snake.id.includes('1') ? 'white' : 'black';
-		this.context.translate(head.x, head.y);
+		this.context.translate(segment.head.x, segment.head.y);
 		this.context.beginPath();
 		this.context.arc(location[0][0], location[0][1], 0.04, 0, 2 * Math.PI);
 		this.context.stroke();
@@ -81,18 +81,16 @@ export default class SnakeBody {
 	draw() {
 		this.context.fillStyle = this.color;
 		this.snake.segments.forEach((segment, index) => {
-			const head = index === 0;
 			let { x, y, w, h } = this.calculateRect(segment);
 			this.context.fillRect(x, y, w, h);
-
-			if (head) {
-				try {
-					this.drawEyes(segment.head, segment.direction);
-				} catch (err) {
-					console.log('Error drawing eyes', err);
-					console.log('snake', this.snake);
-				}
-			}
 		});
+
+		const headSegment = this.snake.segments[0];
+		try {
+			this.drawEyes(headSegment);
+		} catch (err) {
+			console.log('Error drawing eyes', err);
+			console.log('head', headSegment);
+		}
 	}
 }
