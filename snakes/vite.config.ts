@@ -1,7 +1,7 @@
 import { sveltekit } from '@sveltejs/kit/vite';
-import { type ViteDevServer, defineConfig } from 'vite';
+import { type ViteDevServer, defineConfig, loadEnv } from 'vite';
 import { Server } from 'socket.io';
-import { Client } from '@temporalio/client';
+import { Connection, Client } from '@temporalio/client';
 import type { Lobby, Round, Snake } from '$lib/snake/types';
 
 const GAME_WORKFLOW_ID = 'SnakeGame';
@@ -61,7 +61,7 @@ const removePlayerSocket = (socketLobby: SocketLobby, id: string, teamName: stri
 }
 
 const lobbySummary = (socketLobby: SocketLobby): Lobby => {
-	const lobby: Lobby = { teams: {}};
+	const lobby: Lobby = { teams: {} };
 
 	for (const teamName of Object.keys(socketLobby.teams)) {
 		lobby.teams[teamName] = {
@@ -76,12 +76,24 @@ const lobbySummary = (socketLobby: SocketLobby): Lobby => {
 
 const webSocketServer = {
 	name: 'websocket',
-	configureServer(server: ViteDevServer) {
+	async configureServer(server: ViteDevServer) {
 		if (!server.httpServer) return;
 
 		const io = new Server(server.httpServer);
 		globalThis.io = io;
-		const temporal = new Client();
+
+		const env = loadEnv("", process.cwd(), '');
+		const TEMPORAL_GRPC_ADDRESS = env.TEMPORAL_GRPC_ADDRESS;
+		const TEMPORAL_NAMESPACE = env.TEMPORAL_NAMESPACE;
+
+		const connection = await Connection.connect({
+			address: TEMPORAL_GRPC_ADDRESS, // as provisioned
+		});
+
+		const temporal = new Client({
+			connection,
+			namespace: TEMPORAL_NAMESPACE, // change if you have a different namespace
+		});
 
 		const socketLobby: SocketLobby = { teams: {} };
 
@@ -198,16 +210,23 @@ const webSocketServer = {
 			socket.on('snakeChangeDirection', async ({ id, direction }) => {
 				try {
 					await temporal.workflow.getHandle(id).signal('snakeChangeDirection', direction);
-				} catch {}
+				} catch { }
 			});
 		});
 
 		const workerIO = io.of("/workers");
 
 		workerIO.on('connection', (socket) => {
-			socket.on('workflow:instances', ({ identity, count }) => {
-				console.log('workflow:instances', { identity, count });
-				workerIO.emit('workflow:instances', { identity, count });
+			socket.on('worker:start', ({ identity }) => {
+				workerIO.emit('worker:start', { identity });
+			});
+
+			socket.on('worker:workflows', ({ identity, count }) => {
+				workerIO.emit('worker:workflows', { identity, count });
+			});
+
+			socket.on('worker:stop', ({ identity }) => {
+				workerIO.emit('worker:stop', { identity });
 			});
 		});
 	}

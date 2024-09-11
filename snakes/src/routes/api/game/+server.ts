@@ -1,15 +1,27 @@
 import { json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
-import { Client } from '@temporalio/client';
+import { Connection, Client } from '@temporalio/client';
 
+const TEMPORAL_GRPC_ADDRESS = env.TEMPORAL_GRPC_ADDRESS;
 const TEMPORAL_ADDRESS = env.TEMPORAL_ADDRESS;
 const TEMPORAL_NAMESPACE = env.TEMPORAL_NAMESPACE;
 const TEMPORAL_TASK_QUEUE = env.TEMPORAL_TASK_QUEUE;
 const TEMPORAL_WORKFLOW_TYPE = env.TEMPORAL_WORKFLOW_TYPE;
 
-const workflowsUrl = `${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/workflows`;
+const workflowsUrl = `http://${TEMPORAL_ADDRESS}/api/v1/namespaces/${TEMPORAL_NAMESPACE}/workflows`;
 
-const temporal = new Client();
+console.log('TEMPORAL_ADDRESS:', TEMPORAL_ADDRESS);
+console.log('TEMPORAL_NAMESPACE:', TEMPORAL_NAMESPACE);
+console.log(workflowsUrl);
+
+const connection = await Connection.connect({
+    address: TEMPORAL_GRPC_ADDRESS, // as provisioned
+  });
+
+const temporal = new Client({
+    connection,
+    namespace: TEMPORAL_NAMESPACE, // change if you have a different namespace
+  });
 
 export async function POST({ request }) {
 	try {

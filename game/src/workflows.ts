@@ -31,7 +31,7 @@ const { emit } = proxyLocalActivities<ReturnType<typeof buildGameActivities>>({
 const { snakeWorker } = proxyActivities<ReturnType<typeof buildWorkerActivities>>({
   taskQueue: 'snake-workers',
   startToCloseTimeout: '1 day',
-  heartbeatTimeout: 500,
+  heartbeatTimeout: 5000,
   cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
 });
 
@@ -304,7 +304,7 @@ export async function SnakeWorkerWorkflow({ roundId, identity }: SnakeWorkerWork
     } catch (e) {
       if (isCancellation(e)) {
         // Let workers start again faster for now.
-        // await sleep(SNAKE_WORKER_DOWN_TIME);
+        await sleep(SNAKE_WORKER_DOWN_TIME);
       } else {
         throw e;
       }
@@ -326,20 +326,24 @@ export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomAc
     direction = newDirection;
   });
 
-  const { snakeNom } = proxyActivities<ReturnType <typeof buildGameActivities>>({
-    startToCloseTimeout: nomDuration * 2,
-  });
+  let snakeNom: (id: string, duration: number) => Promise<void>;
+
+  if (nomActivity) {
+    snakeNom = proxyActivities<ReturnType <typeof buildGameActivities>>({
+      startToCloseTimeout: nomDuration * 2,
+    }).snakeNom;
+  } else {
+    snakeNom = proxyLocalActivities<ReturnType <typeof buildGameActivities>>({
+      startToCloseTimeout: nomDuration * 2,
+    }).snakeNom;
+  }
 
   const round = getExternalWorkflowHandle(roundId);
   const noms = Array.from({ length: nomsPerMove });
   let moves = 0;
 
   while (true) {
-    if (nomActivity) {
-      await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
-    } else {
-      await sleep(nomDuration);
-    }
+    await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
     await round.signal(snakeMoveSignal, id, direction);
     if (moves++ > SNAKE_MOVES_BEFORE_CAN) {
       await continueAsNew<typeof SnakeWorkflow>({ roundId, id, direction, nomsPerMove, nomActivity, nomDuration });

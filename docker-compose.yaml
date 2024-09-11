@@ -1,6 +1,6 @@
 services:
   postgresql:
-    container_name: temporal-postgresql
+    container_name: temporal-postgresql-demo
     environment:
       POSTGRES_PASSWORD: temporal
       POSTGRES_USER: temporal
