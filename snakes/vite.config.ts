@@ -264,6 +264,10 @@ const webSocketServer = {
 		const workerIO = io.of("/workers");
 
 		workerIO.on('connection', (socket) => {
+			socket.on('worker:booting', ({ identity }) => {
+				workerIO.emit('worker:booting', { identity });
+			});
+
 			socket.on('worker:start', ({ identity }) => {
 				workerIO.emit('worker:start', { identity });
 			});

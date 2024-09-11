@@ -160,6 +160,11 @@
 
 		socket.emit('fetchRound');
 
+		workerSocket.on('worker:booting', ({ identity }) => {
+			console.log('Worker booting:', identity);
+			workers[identity] = '🔄';
+		});
+
 		workerSocket.on('worker:start', ({ identity }) => {
 			console.log('Worker started:', identity);
 			workers[identity] = '▶';
@@ -172,7 +177,7 @@
 
 		workerSocket.on('worker:stop', ({ identity }) => {
 			console.log('Worker stopped:', identity);
-			workers[identity] = '⏹️';
+			workers[identity] = '☠️';
 		});
 	});
 

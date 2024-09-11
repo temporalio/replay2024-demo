@@ -19,6 +19,10 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
 
   return {
     snakeWorker: async (identity: string) => {
+      const heartbeater = setInterval(heartbeat, 200);
+
+      workerSocket.emit('worker:booting', { identity });
+
       const worker = await Worker.create({
         connection,
         namespace,
@@ -28,8 +32,6 @@ export function buildWorkerActivities(namespace: string, connection: NativeConne
         identity,
         stickyQueueScheduleToStartTimeout: 200,
       })
-
-      const heartbeater = setInterval(heartbeat, 200);
 
       worker.numRunningWorkflowInstances$.subscribe((count) => {
         workerSocket.emit('worker:workflows', { identity, count });
