@@ -7,13 +7,30 @@ Here's a demo of it in action:
 
 https://github.com/user-attachments/assets/4163b799-f857-49e4-8db0-41bba04f4ddc
 
-Prerequisites
+Playing the game
 ===
+Before beginning, grab two of your friends!
+
+1. Go to http://**[your ui host]**:5173 (e.g. http://localhost:5173/)
+1. From the main menu, choose **Start New Game**.
+
+    <img width="344" alt="Screenshot 2024-09-11 at 10 00 49 PM" src="https://github.com/user-attachments/assets/0d553958-2a99-413d-b188-f94890e32bca">
+
+1. The Lobby will appear, and each player should scan the QR code of their snake colour of choice.
+
+    <img width="1205" alt="Screenshot 2024-09-11 at 10 09 55 PM" src="https://github.com/user-attachments/assets/d2ab0703-38fa-49e9-a901-a7763df4c694">
+
+1. Once all players are ready, click the **Start Round** button to begin!
+
+Installing the game
+===
+
+Download Prerequisites
+---
+If you don't already have them, you will need:
 * [Docker](https://www.docker.com/get-started/), including [Docker Compose](https://docs.docker.com/compose/)
 * [node.js](https://nodejs.org/en/download/package-manager) version 18 or later
 
-Installation
-===
 
 Start the Temporal Server
 ---
@@ -21,11 +38,6 @@ Start the Temporal Server
     ```
     docker compose up
     ```
-
-1. Once complete, it should look like the following:
-
-    <img width="493" alt="Screenshot 2024-09-11 at 9 59 31 PM" src="https://github.com/user-attachments/assets/6b6e2a63-3b03-4d73-b540-231c64c1102d">
-
 
 Set up the UI
 ---
@@ -59,14 +71,7 @@ Set up the UI
     npm run dev -- --host 0.0.0.0 --open 
     ```
 
-1. A browser window will automatically open to http://localhost:5173/ and looks like the following:
-
-    <img width="344" alt="Screenshot 2024-09-11 at 10 00 49 PM" src="https://github.com/user-attachments/assets/0d553958-2a99-413d-b188-f94890e32bca">
-
-
-Playing the game
-===
-TODO
+1. A browser window will automatically open to http://localhost:5173/ showing the game main screen.
 
 Troubleshooting
 ===
@@ -80,6 +85,9 @@ services:
   postgresql:
     container_name: temporal-postgresql-demo # Change name here
 ```
+
+**The QR code from the lobby just goes to localhost, which isn't valid on my phone**
+TODO.
 
 Credit
 ===
