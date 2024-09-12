@@ -130,8 +130,9 @@ Set up the Temporal Workers (/game)
 
 Test that demo is working
 ---
-Go to http://<your ui host>:5173/ and from the main screen, choose “Start Demo Game” — you should see the following with the snakes moving around by themselves.
+Go to http://**[your ui host]**:5173 (e.g. http://localhost:5173/) and from the main screen, choose “Start Demo Game” — you should see the following with the snakes moving around by themselves.
 
+TODO: Image
 
 Troubleshooting
 ===
