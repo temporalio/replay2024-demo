@@ -31,7 +31,7 @@
 		workflows: Set<string>;
 	};
 	let workers: Record<string, Worker> = {};
-  	let showWorkers = false;
+	let showWorkers = false;
 
 	let timerInterval: NodeJS.Timeout | undefined;
 	let demoInterval: NodeJS.Timeout | undefined;
@@ -45,9 +45,9 @@
 			Snakes[snake.id] = new SnakeBody(snakeCanvases[snake.id], round, snake);
 		}
 
-    if (round.config.killWorkers) {
-      showWorkers = true;
-    }
+		if (round.config.killWorkers) {
+			showWorkers = true;
+		}
 
 		timeLeft = round.duration;
 		if (round.startedAt) {
@@ -314,17 +314,17 @@
 </div>
 
 {#if showWorkers}
-  <div id="workers">
-    {#each Object.entries(workers) as [id, worker] (id)}
-      {#if worker.state == 'running'}
-        <div class="worker worker-running">
-          {worker.workflows.size > 0 ? '🐍'.repeat(worker.workflows.size) : '😴'}
-        </div>
-      {:else}
-        <div class="worker worker-stopped">☠️</div>
-      {/if}
-    {/each}
-  </div>
+	<div id="workers">
+		{#each Object.entries(workers) as [id, worker] (id)}
+			{#if worker.state == 'running'}
+				<div class="worker worker-running">
+					{worker.workflows.size > 0 ? '🐍'.repeat(worker.workflows.size) : '😴'}
+				</div>
+			{:else}
+				<div class="worker worker-stopped">☠️</div>
+			{/if}
+		{/each}
+	</div>
 {/if}
 
 <style lang="postcss">
