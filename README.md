@@ -7,6 +7,10 @@ Here's a demo of it in action:
 
 https://github.com/user-attachments/assets/4163b799-f857-49e4-8db0-41bba04f4ddc
 
+Technical explanation
+===
+TODO
+
 Playing the game
 ===
 Before beginning, grab two of your friends!
