@@ -7,6 +7,7 @@ export type GameConfig = {
   nomActivity: boolean;
   nomDuration: number;
   killWorkers: boolean;
+  roundDuration: number;
 };
 
 export type Game = {

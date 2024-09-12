@@ -6,8 +6,14 @@
 	let loading = false;
 	let resetting = false;
 
-	const beginGame = async ({ demo }: { demo: Boolean }) => {
+	const beginGame = async ({ demo, practise }: { demo: Boolean, practise: Boolean }) => {
 		const socket = io();
+
+		const config = GAME_CONFIG;
+		if (practise) {
+			config.killWorkers = false;
+			config.roundDuration = 30;
+		}
 
 		loading = true
 		const finish = await socket.emitWithAck('gameFinish');
@@ -17,7 +23,7 @@
 			loading = false;
 			return;
 		}
-		const start = await socket.emitWithAck('gameStart', { config: GAME_CONFIG });
+		const start = await socket.emitWithAck('gameStart', { config });
 		if (start.error) {
 			alert('Failed to start game');
 			console.log('gameStart error', start.error);
@@ -32,7 +38,7 @@
 		}
 	};
 
-	const hardReset = async () => {
+	const reset = async () => {
 		const socket = io();
 
 		resetting = true
@@ -54,9 +60,10 @@
 		<h2 class="retro">Resetting Game...</h2>
 	{:else}
 	<div class="flex flex-col gap-4">
-		<button class="retro" on:click={() => { beginGame({ demo: false })} }>Start New Game</button>
-		<button class="retro" on:click={() => { beginGame({ demo: true })} }>Start Demo Game</button>
-		<button class="retro" on:click={() => { hardReset() } }>Hard Reset</button>
+		<button class="retro" on:click={() => { beginGame({ demo: false, practise: false })} }>Start New Game</button>
+		<button class="retro" on:click={() => { beginGame({ demo: false, practise: true })} }>Start Practice Game</button>
+		<button class="retro" on:click={() => { beginGame({ demo: true, practise: false })} }>Start Demo Game</button>
+		<button class="retro" on:click={() => { reset() } }>Reset</button>
 	</div>
 	{/if}
 </section>

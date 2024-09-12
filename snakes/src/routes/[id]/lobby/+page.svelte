@@ -22,7 +22,7 @@
 	lobbySocket.on('lobby', ({ lobby }: { lobby: Lobby }) => {
 		for (const team of GAME_CONFIG.teamNames) {
 			players[team] = lobby.teams[team]?.players || 0;
-			scores[team] = lobby.teams[team]?.score || 0;
+			// scores[team] = lobby.teams[team]?.score || 0;
 		}
 	});
 
@@ -57,9 +57,9 @@
 					<div class="text-xl" id="{team}-players">
 						Players: {players[team]}
 					</div>
-					<div class="text-xl" id="{team}-score">
+					<!-- <div class="text-xl" id="{team}-score">
 						Score: {scores[team]}
-					</div>
+					</div> -->
 				</div>
 			</div>
 		{/each}
