@@ -31,7 +31,7 @@
 		workflows: Set<string>;
 	};
 	let workers: Record<string, Worker> = {};
-  let showWorkers = false;
+  	let showWorkers = false;
 
 	let timerInterval: NodeJS.Timeout | undefined;
 	let demoInterval: NodeJS.Timeout | undefined;
@@ -105,7 +105,7 @@
 			}));
 		});
 
-		socket.emit('roundStart', { duration: 60, snakes });
+		socket.emit('roundStart', { snakes });
 	};
 
 	const startNewDemoRound = async () => {
@@ -115,7 +115,7 @@
 			});
 		});
 
-		socket.emit('roundStart', { duration: 60, snakes });
+		socket.emit('roundStart', { snakes });
 	};
 
 	const updateTimer = () => {

@@ -9,6 +9,7 @@ export const FASTEST = 30;
 export const GAME_CONFIG: GameConfig = {
   width: 25,
   height: 25,
+  roundDuration: 60,
   snakesPerTeam: 1,
   teamNames: ['red', 'blue', 'orange'],
   nomsPerMove: 1,

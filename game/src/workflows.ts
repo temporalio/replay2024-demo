@@ -69,7 +69,6 @@ export const gameFinishSignal = defineSignal('gameFinish');
 
 type RoundStartSignal = {
   snakes: Snake[];
-  duration: number;
 }
 // UI -> GameWorkflow to start round
 export const roundStartSignal = defineSignal<[RoundStartSignal]>('roundStart');
@@ -110,8 +109,8 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
   });
 
   let newRound: RoundWorkflowInput | undefined;
-  setHandler(roundStartSignal, async ({ duration, snakes }) => {
-    newRound = { config, teams: buildRoundTeams(game), duration, snakes };
+  setHandler(roundStartSignal, async ({ snakes }) => {
+    newRound = { config, teams: buildRoundTeams(game), snakes };
   });
 
   while (!finished) {
@@ -143,7 +142,6 @@ type RoundWorkflowInput = {
   config: GameConfig;
   teams: Teams;
   snakes: Snake[];
-  duration: number;
 }
 
 type SnakeMove = {
@@ -151,12 +149,12 @@ type SnakeMove = {
   direction: Direction;
 };
 
-export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWorkflowInput): Promise<Round> {
-  log.info('Starting round', { duration, snakes });
+export async function RoundWorkflow({ config, teams, snakes }: RoundWorkflowInput): Promise<Round> {
+  log.info('Starting round', { config, teams, snakes });
 
   const round: Round = {
     config: config,
-    duration: duration,
+    duration: config.roundDuration,
     apples: {},
     teams: teams,
     snakes: snakes.reduce<Snakes>((acc, snake) => { acc[snake.id] = snake; return acc; }, {}),
@@ -243,7 +241,7 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
     round.startedAt = Date.now();
 
     Promise.race([
-      sleep(duration * 1000),
+      sleep(round.duration * 1000),
       CancellationScope.current().cancelRequested,
     ])
     .then(() => log.info('Round timer expired'))
