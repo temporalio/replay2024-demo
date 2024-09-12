@@ -56,15 +56,15 @@ export class Replay2024DemoStack extends cdk.Stack {
 
     // ECS task definition for the UI container (Game UI)
     const uiTaskDefinition = new ecs.FargateTaskDefinition(this, 'GameUiTaskDef', {
-      memoryLimitMiB: 512,
-      cpu: 256,
+      memoryLimitMiB: 2048,
+      cpu: 1024,
       taskRole,
     });
 
     const gameUiContainer = uiTaskDefinition.addContainer('GameUiContainer', {
       image: ecs.ContainerImage.fromEcrRepository(
         ecr.Repository.fromRepositoryName(this, 'UiRepo', 'temporal-replay-demo-2024-game-ui'),
-        'latest'  // Use 'latest' tag or your specific image tag
+        'v1.0.1'  // Use 'latest' tag or your specific image tag
       ),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'game-ui' }),
       environment: {
@@ -110,6 +110,7 @@ export class Replay2024DemoStack extends cdk.Stack {
       },
     });
 
+    const nlbDnsName = nlb.loadBalancerDnsName;
 
     // EIP association cannot be done directly with CDK for NLB. You will need to do this manually
     // by associating the Elastic IP to the Network Interfaces of the NLB after deployment.
@@ -124,7 +125,7 @@ export class Replay2024DemoStack extends cdk.Stack {
     const gameWorkerContainer = workerTaskDefinition.addContainer('GameWorkerContainer', {
       image: ecs.ContainerImage.fromEcrRepository(
         ecr.Repository.fromRepositoryName(this, 'WorkerRepo', 'temporal-replay-demo-2024-game-worker'),
-        'latest'  // Use 'latest' tag or your specific image tag
+        'v1.0.1'  // Use 'latest' tag or your specific image tag
       ),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'game-worker' }),
       environment: {
@@ -132,7 +133,7 @@ export class Replay2024DemoStack extends cdk.Stack {
         'TEMPORAL_NAMESPACE': 'replay-2024-demo.sdvdw',
         'TEMPORAL_CLIENT_CERT_PATH': 'replay-2024-demo.sdvdw.crt',
         'TEMPORAL_CLIENT_KEY_PATH': 'replay-2024-demo.sdvdw.key',
-        'SOCKETIO_HOST': 'http://replay-gameu-hxtdpzmhebqu-b317b10490591f8c.elb.us-west-2.amazonaws.com:5173',
+        'SOCKETIO_HOST': `http://${nlbDnsName}:5173`,
       },
     });
 
