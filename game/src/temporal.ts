@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
-import { NativeConnection } from '@temporalio/worker';
+import { NativeConnection, NativeConnectionOptions } from '@temporalio/worker';
+import { Connection, ConnectionOptions } from '@temporalio/client';
 
 // Helpers for configuring the mTLS client and worker samples
 export function requiredEnv(name: string): string {
@@ -38,20 +39,20 @@ export function getEnv(): ClientEnv | WorkerEnv {
   };
 }
 
-export async function createConnection({
+export async function connectionOptions({
   address,
   clientCertPath,
   clientKeyPath,
   serverNameOverride,
   serverRootCACertificatePath,
-}: ConnectionEnv): Promise<NativeConnection> {
+}: ConnectionEnv): Promise<NativeConnectionOptions | ConnectionOptions> {
   let serverRootCACertificate: Buffer | undefined = undefined;
   if (serverRootCACertificatePath) {
     serverRootCACertificate = await fs.readFile(serverRootCACertificatePath);
   }
 
   if (clientCertPath && clientKeyPath) {
-    return NativeConnection.connect({
+    return {
       address,
       tls: {
         serverNameOverride,
@@ -61,9 +62,43 @@ export async function createConnection({
           key: await fs.readFile(clientKeyPath),
         },
       },
-    });
+    };
   }
   else {
-    return NativeConnection.connect({ address: address });
+    return { address: address };
   }
-}
+};
+
+export async function createNativeConnection({
+  address,
+  clientCertPath,
+  clientKeyPath,
+  serverNameOverride,
+  serverRootCACertificatePath,
+}: ConnectionEnv): Promise<NativeConnection> {
+  const options = await connectionOptions({
+    address,
+    clientCertPath,
+    clientKeyPath,
+    serverNameOverride,
+    serverRootCACertificatePath,
+  }) as NativeConnectionOptions;
+  return NativeConnection.connect(options);
+};
+
+export async function createConnection({
+  address,
+  clientCertPath,
+  clientKeyPath,
+  serverNameOverride,
+  serverRootCACertificatePath,
+}: ConnectionEnv): Promise<Connection> {
+  const options = await connectionOptions({
+    address,
+    clientCertPath,
+    clientKeyPath,
+    serverNameOverride,
+    serverRootCACertificatePath,
+  }) as ConnectionOptions;
+  return Connection.connect(options);
+};

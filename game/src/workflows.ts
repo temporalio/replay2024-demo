@@ -16,7 +16,7 @@ import {
   isCancellation,
 } from '@temporalio/workflow';
 
-import { buildGameActivities, buildWorkerActivities, Event } from './activities';
+import { buildGameActivities, buildWorkerActivities, buildTrackerActivities, Event } from './activities';
 import { GameConfig, Game, Teams, Round, Snake, Snakes, Direction, Point, Segment } from './types';
 
 const ROUND_WF_ID = 'SnakeGameRound';
@@ -30,9 +30,19 @@ const { emit } = proxyLocalActivities<ReturnType<typeof buildGameActivities>>({
 
 const { snakeWorker } = proxyActivities<ReturnType<typeof buildWorkerActivities>>({
   taskQueue: 'snake-workers',
-  startToCloseTimeout: '1 day',
+  startToCloseTimeout: '1 hour',
   heartbeatTimeout: 500,
   cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+});
+
+const { snakeTracker } = proxyActivities<ReturnType<typeof buildTrackerActivities>>({
+  heartbeatTimeout: 500,
+  startToCloseTimeout: '1 hour',
+  cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+  retry: {
+    initialInterval: 1,
+    backoffCoefficient: 1,
+  },
 });
 
 function randomDirection(): Direction {
@@ -168,7 +178,6 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
   setHandler(workerStartedSignal, async ({ identity }) => {
     if (round.finished) { return; }
     workersStarted.push(identity);
-    round.apples[identity] = randomEmptyPoint(round);
   });
 
   const processSignals = async () => {
@@ -191,6 +200,7 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
       if (config.killWorkers) {
         const worker = getExternalWorkflowHandle(appleId);
         signals.push(worker.signal(workerStopSignal));
+        events.push({ type: 'worker:stop', payload: { identity: appleId } });
       } else {
         workersStarted.push(appleId);
       }
@@ -199,6 +209,7 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
 
     for (const workerId of workersStarted) {
       round.apples[workerId] = randomEmptyPoint(round);
+      events.push({ type: 'worker:start', payload: { identity: workerId } });
     }
 
     if (applesEaten.length || workersStarted.length) {
@@ -217,15 +228,16 @@ export async function RoundWorkflow({ config, teams, snakes, duration }: RoundWo
 
   try {
     await startWorkerManagers(workerCount);
+    await startSnakeTrackers(round.snakes);
     await startSnakes(round.config, round.snakes);
     await emit([{ type: 'roundLoading', payload: { round } }]);
 
     // Wait for all workers to register
-    await condition(() => workersStarted.length === workerCount);
-    for (const workerId of workersStarted) {
-      round.apples[workerId] = randomEmptyPoint(round);
+    while (true) {
+      await condition(() => workersStarted.length > 0);
+      await processSignals();
+      if (Object.keys(round.apples).length === workerCount) { break; }
     }
-    workersStarted.length = 0;
 
     // Start the round
     round.startedAt = Date.now();
@@ -280,14 +292,11 @@ export async function SnakeWorkerWorkflow({ roundId, identity }: SnakeWorkerWork
   while (true) {
     try {
       scope = new CancellationScope();
-      await Promise.all([
-        round.signal(workerStartedSignal, { identity }),
-        scope.run(() => snakeWorker(identity)),
-      ])
+      await scope.run(() => snakeWorker(roundId, identity));
     } catch (e) {
       if (isCancellation(e)) {
         // Let workers start again faster for now.
-        // await sleep(SNAKE_WORKER_DOWN_TIME);
+        await sleep(SNAKE_WORKER_DOWN_TIME);
       } else {
         throw e;
       }
@@ -480,6 +489,12 @@ async function startWorkerManagers(count: number) {
     });
   })
   return await Promise.all(snakeWorkerManagers);
+}
+
+async function startSnakeTrackers(snakes: Snakes) {
+  for (const snake of Object.values(snakes)) {
+    snakeTracker(snake.id);
+  }
 }
 
 async function startSnakes(config: GameConfig, snakes: Snakes) {
