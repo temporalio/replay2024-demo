@@ -1,1 +1,4 @@
 victoria-metrics-data
+*.crt
+*.key
+*.pem
