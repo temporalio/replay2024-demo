@@ -76,7 +76,7 @@
 
 {#if snake && playing}
 <div class="flex flex-col items-center gap-6 text-6xl">
-    <div class="w-16 h-16 rounded border-2 bg-{snake.teamName}-600" 
+    <div class="w-16 h-16 rounded border-2"
       class:border-white={snake.id.endsWith('-0')}
       class:border-black={snake.id.endsWith('-1')}
       />
@@ -86,7 +86,7 @@
       <button on:click={() => onMove('right')}>&#8594;</button>
     </div>
     <button class="mx-auto" on:click={() => onMove('down')}>&#8595;</button>
-  </div>
+</div>
 
 <style lang="postcss">
     button {
