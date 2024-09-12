@@ -116,8 +116,8 @@ export class Replay2024DemoStack extends cdk.Stack {
 
     // ECS task definition for the worker container (Temporal Worker)
     const workerTaskDefinition = new ecs.FargateTaskDefinition(this, 'GameWorkerTaskDef', {
-      memoryLimitMiB: 512,
-      cpu: 256,
+      memoryLimitMiB: 2048,
+      cpu: 1024,
       taskRole,
     });
 
