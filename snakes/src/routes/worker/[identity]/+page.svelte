@@ -3,44 +3,95 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 
-    let online = false;
+	let online = false;
 
-    let workerSocket: Socket;
-    let workflows: Record<string, any> = {};
+	let socket: Socket;
+	type WorkerState = 'running' | 'stopped';
+	type Worker = {
+		identity: string;
+		state: WorkerState;
+		workflows: Set<string>;
+	};
+	let worker: Worker;
 
 	onMount(() => {
-        workerSocket = io("/workers");
+		socket = io();
 
-        workerSocket.on('connect', () => {
-            online = true;
-        });
+		worker = {
+			identity: $page.params.identity,
+			state: 'stopped',
+			workflows: new Set()
+		};
 
-        workerSocket.on('workflow:execute', ({ identity, workflowInfo }) => {
-            if (identity === $page.params.identity) {
-                workflows = { ...workflows, [workflowInfo.workflowId]: workflowInfo };
-            } else {
-                delete workflows[workflowInfo.workflowId];
-                workflows = workflows; // Let Svelte know to update the UI
-            }
-        });
+		socket.on('connect', () => {
+			online = true;
+		});
+		socket.on('disconnect', () => {
+			online = false;
+		});
 
-        workerSocket.on('workflow:complete', ({ identity, workflowInfo }) => {
-            delete workflows[workflowInfo.workflowId];
-            workflows = workflows; // Let Svelte know to update the UI
-        });
+		socket.on('worker:start', ({ identity }) => {
+			if (identity != worker.identity) {
+				return;
+			}
+			worker.state = 'running';
+		});
 
-        workerSocket.on('disconnect', () => {
-            online = false;
-        });
+		socket.on('worker:execution', ({ identity, snakeId }) => {
+			if (identity != worker.identity) {
+				return;
+			}
+			worker.state = 'running';
+			worker.workflows.add(snakeId);
+		});
+
+		socket.on('worker:timeout', ({ snakeId }) => {
+			worker.workflows.delete(snakeId);
+		});
+
+		socket.on('worker:stop', ({ identity }) => {
+			if (identity != worker.identity) {
+				return;
+			}
+			worker.state = 'stopped';
+			worker.workflows.clear();
+		});
 	});
 </script>
 
-<section>
-    <h2 class="retro">Worker: { online ? "Online" : "Offline"}</h2>
-    <p class="retro">Workflows:</p>
-    <ul class="retro">
-        {#each Object.values(workflows) as workflow}
-            <li>{workflow.workflowType}[{workflow.workflowId}]</li>
-        {/each}
-    </ul>
+<section
+	class="flex flex-col items-center {online && worker.state == 'running' ? 'online' : 'offline'}"
+>
+	{#if online && worker.state == 'running'}
+		<div class="mx-auto worker">
+			{worker.workflows.size > 0 ? '🐍'.repeat(worker.workflows.size) : '😴'}
+		</div>
+	{:else}
+		<div class="mx-auto worker">☠️</div>
+	{/if}
 </section>
+
+<style lang="postcss">
+	section {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		justify-content: center;
+		align-items: center;
+		text-align: center;
+	}
+
+	.worker {
+		font-size: 8rem;
+	}
+
+	.online {
+		background-color: green;
+	}
+
+	.offline {
+		background-color: red;
+	}
+</style>
