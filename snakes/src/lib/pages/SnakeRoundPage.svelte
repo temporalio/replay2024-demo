@@ -10,7 +10,6 @@
 
 	let socket: Socket;
 	let lobbySocket: Socket;
-	let workerSocket: Socket;
 
 	let board: SnakeBoard;
 	let boardCanvas: HTMLCanvasElement;
@@ -25,7 +24,14 @@
 	let scores: Record<string, number> = {};
 	let timeLeft = 0;
 
-	let workers: Record<string, string | number> = {};
+	type WorkerState = 'running' | 'stopped';
+	type Worker = {
+		identity: string;
+		state: WorkerState;
+		workflows: Set<string>;
+	};
+	let workers: Record<string, Worker> = {};
+  let showWorkers = false;
 
 	let timerInterval: NodeJS.Timeout | undefined;
 	let demoInterval: NodeJS.Timeout | undefined;
@@ -39,9 +45,9 @@
 			Snakes[snake.id] = new SnakeBody(snakeCanvases[snake.id], round, snake);
 		}
 
-		for (const id of Object.keys(round.apples)) {
-			workers[id] = '?';
-		}
+    if (round.config.killWorkers) {
+      showWorkers = true;
+    }
 
 		timeLeft = round.duration;
 		if (round.startedAt) {
@@ -51,6 +57,11 @@
 
 	const startRound = (round: Round) => {
 		roundLoading = false;
+
+		for (const id of Object.keys(round.apples)) {
+			workers[id] = { identity: id, state: 'running', workflows: new Set() };
+		}
+
 		board.update(round);
 
 		timerInterval = setInterval(updateTimer, 1000);
@@ -97,8 +108,7 @@
 		socket.emit('roundStart', { duration: 60, snakes });
 	};
 
-	const startNewDemoRound = () => {
-		console.log('Starting new demo round');
+	const startNewDemoRound = async () => {
 		const snakes: Snake[] = GAME_CONFIG.teamNames.flatMap((team: string) => {
 			return SNAKE_NUMBERS.map((i) => {
 				return { id: `${team}-${i}`, playerId: `${team} Bot ${i}`, teamName: team, segments: [] };
@@ -115,7 +125,6 @@
 	onMount(async () => {
 		socket = io();
 		lobbySocket = io('/lobby');
-		workerSocket = io('/workers');
 
 		socket.on('connect_error', (error) => {
 			if (socket.active) {
@@ -160,24 +169,43 @@
 
 		socket.emit('fetchRound');
 
-		workerSocket.on('worker:booting', ({ identity }) => {
-			console.log('Worker booting:', identity);
-			workers[identity] = '🔄';
+		socket.on('worker:start', ({ identity }) => {
+			const worker = workers[identity];
+			if (!worker) {
+				return;
+			}
+			worker.state = 'running';
+			workers = workers;
 		});
 
-		workerSocket.on('worker:start', ({ identity }) => {
-			console.log('Worker started:', identity);
-			workers[identity] = '▶';
+		socket.on('worker:execution', ({ identity, snakeId }) => {
+			for (const worker of Object.values(workers)) {
+				worker.workflows.delete(snakeId);
+			}
+			const worker = workers[identity];
+			if (!worker) {
+				return;
+			}
+			worker.state = 'running';
+			worker.workflows.add(snakeId);
+			workers = workers;
 		});
 
-		workerSocket.on('worker:workflows', ({ identity, count }) => {
-			console.log('Worker count:', identity, count);
-			workers[identity] = count > 0 ? '🐍'.repeat(count) : '😴';
+		socket.on('worker:timeout', ({ snakeId }) => {
+			for (const worker of Object.values(workers)) {
+				worker.workflows.delete(snakeId);
+			}
+			workers = workers;
 		});
 
-		workerSocket.on('worker:stop', ({ identity }) => {
-			console.log('Worker stopped:', identity);
-			workers[identity] = '☠️';
+		socket.on('worker:stop', ({ identity }) => {
+			const worker = workers[identity];
+			if (!worker) {
+				return;
+			}
+			worker.state = 'stopped';
+			worker.workflows.clear();
+			workers = workers;
 		});
 	});
 
@@ -230,9 +258,9 @@
 		return direction || randomDirection();
 	};
 
-  const randomDirection = (): Direction => {
-    return ['up', 'left', 'right', 'down'][Math.floor(Math.random() * 4)] as Direction;
-  }
+	const randomDirection = (): Direction => {
+		return ['up', 'left', 'right', 'down'][Math.floor(Math.random() * 4)] as Direction;
+	};
 
 	const steerRandomSnake = () => {
 		const snakes = Object.values(Snakes);
@@ -284,11 +312,20 @@
 		<div class="retro" id={team}>{scores[team] || 0}</div>
 	{/each}
 </div>
-<div id="workers">
-	{#each Object.entries(workers) as [id, state] (id)}
-		<div>{state}</div>
-	{/each}
-</div>
+
+{#if showWorkers}
+  <div id="workers">
+    {#each Object.entries(workers) as [id, worker] (id)}
+      {#if worker.state == 'running'}
+        <div class="worker worker-running">
+          {worker.workflows.size > 0 ? '🐍'.repeat(worker.workflows.size) : '😴'}
+        </div>
+      {:else}
+        <div class="worker worker-stopped">☠️</div>
+      {/if}
+    {/each}
+  </div>
+{/if}
 
 <style lang="postcss">
 	#game {
@@ -316,6 +353,18 @@
 
 	#score .retro {
 		font-size: 2rem;
+	}
+
+	.worker {
+		@apply py-2;
+	}
+
+	.worker-running {
+		background-color: #0f0;
+	}
+
+	.worker-stopped {
+		background-color: #f00;
 	}
 
 	#time {

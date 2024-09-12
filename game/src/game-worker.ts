@@ -1,6 +1,7 @@
 import { Worker } from '@temporalio/worker';
-import { createConnection, WorkerEnv, getEnv, requiredEnv } from './temporal';
-import { buildGameActivities } from './activities';
+import { createNativeConnection, createConnection, WorkerEnv, getEnv, requiredEnv } from './temporal';
+import { buildGameActivities, buildTrackerActivities } from './activities';
+import { Client } from '@temporalio/client';
 
 /**
  * Run a Worker with an mTLS connection, configuration is provided via environment variables.
@@ -15,7 +16,10 @@ async function run({
   serverRootCACertificatePath,
   taskQueue,
 }: WorkerEnv) {
-  const connection = await createConnection({ address, clientCertPath, clientKeyPath, serverNameOverride, serverRootCACertificatePath });
+  const connection = await createNativeConnection({ address, clientCertPath, clientKeyPath, serverNameOverride, serverRootCACertificatePath });
+  const client = new Client({
+    connection: await createConnection({ address, clientCertPath, clientKeyPath, serverNameOverride, serverRootCACertificatePath })
+  });
 
   const worker = await Worker.create({
     connection,
@@ -23,7 +27,10 @@ async function run({
     workflowsPath: require.resolve('./workflows'),
     identity: 'game-worker',
     taskQueue,
-    activities: buildGameActivities(requiredEnv('SOCKETIO_HOST')),
+    activities: {
+      ...buildGameActivities(requiredEnv('SOCKETIO_HOST')),
+      ...buildTrackerActivities(namespace, client, requiredEnv('SOCKETIO_HOST'))
+    },
   });
 
   await worker.run();
