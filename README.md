@@ -12,15 +12,57 @@ Prerequisites
 * [Docker](https://www.docker.com/get-started/), including [Docker Compose](https://docs.docker.com/compose/)
 * [node.js](https://nodejs.org/en/download/package-manager) version 18 or later
 
-Installing the game
+Installation
 ===
-1. Start the Temporal server, and leave it running in the background:
 
-```
-docker compose up
-```
+Start the Temporal Server
+---
+1. Run the following, and leave it running in the background:
+    ```
+    docker compose up
+    ```
 
-2. 
+1. Once complete, it should look like the following:
+
+    <img width="493" alt="Screenshot 2024-09-11 at 9 59 31 PM" src="https://github.com/user-attachments/assets/6b6e2a63-3b03-4d73-b540-231c64c1102d">
+
+
+Set up the UI
+---
+1. Change into the UI directory:
+    ```
+    cd snakes
+    ```
+
+1. Install dependencies:
+    ```
+    npm install
+    ```
+
+1. Create a .env file containing the following (in the `snakes` directory):
+    ```
+    # (contents of .env file)
+    TEMPORAL_TASK_QUEUE=game
+    TEMPORAL_WORKFLOW_TYPE=GameWorkflow
+    TEMPORAL_ADDRESS=127.0.0.1:7243
+    TEMPORAL_NAMESPACE=default
+    ```
+
+1. Load the file:
+    ```
+    source .env
+    ```
+
+1. Run the UI, and leave this running in the background as well.
+    ```
+    # --host param used so you can connect workers from other machines
+    npm run dev -- --host 0.0.0.0 --open 
+    ```
+
+1. A browser window will automatically open to http://localhost:5173/ and looks like the following:
+
+    <img width="344" alt="Screenshot 2024-09-11 at 10 00 49 PM" src="https://github.com/user-attachments/assets/0d553958-2a99-413d-b188-f94890e32bca">
+
 
 Playing the game
 ===
