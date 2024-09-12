@@ -18,6 +18,7 @@ async function run({
 }: WorkerEnv) {
   const connection = await createNativeConnection({ address, clientCertPath, clientKeyPath, serverNameOverride, serverRootCACertificatePath });
   const client = new Client({
+    namespace,
     connection: await createConnection({ address, clientCertPath, clientKeyPath, serverNameOverride, serverRootCACertificatePath })
   });
 
