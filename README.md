@@ -39,7 +39,7 @@ Start the Temporal Server
     docker compose up
     ```
 
-Set up the UI
+Set up the UI (/snakes)
 ---
 1. Change into the UI directory:
     ```
@@ -73,8 +73,73 @@ Set up the UI
 
 1. A browser window will automatically open to http://localhost:5173/ showing the game main screen.
 
+Set up the Temporal Workers (/game)
+---
+
+1. Change into the `game` directory:
+
+    ```
+    cd game
+    ```
+
+1. Install dependencies:
+
+    ```
+    npm install
+    ```
+
+1. Create an `.env` file in the game directory. Ensure environment variables are unset so we connect to the local Docker-based server:
+
+    ```
+    # (contents of .env file)
+    TEMPORAL_ADDRESS="192.168.0.8:7233"
+    TEMPORAL_NAMESPACE="default"
+    TEMPORAL_CLIENT_CERT_PATH="" # set this empty
+    TEMPORAL_CLIENT_KEY_PATH="" # set this empty
+
+    # set this to the host ip you're running the UI server on. See UI output above (if localhost then use 127.0.0.1:5173)
+    export SOCKETIO_HOST=http://127.0.0.1:5173
+    ```
+
+1. Load the file:
+    ```
+    source .env
+    ```
+
+1. Run the game worker (and leave this running in the background):
+    ```
+    npm run game-worker
+    ```
+
+1. If successful, the output should look like this:
+
+    <img width="836" alt="Screenshot 2024-09-11 at 10 18 15 PM" src="https://github.com/user-attachments/assets/9cc6d33e-c523-47cc-9b09-8cc7bff0ea33">
+
+1. In a new CLI tab, run:
+
+    ```
+    # set this to the host ip/dns name you're running the UI server on. See UI output above (if localhost then use 127.0.0.1:5173)
+    export SOCKETIO_HOST=http://127.0.0.1:5173
+    
+    npm run snake-worker-host-worker
+    ```
+
+1. If all is well, you should see output like the following:
+
+    <img width="889" alt="Screenshot 2024-09-11 at 10 23 27 PM" src="https://github.com/user-attachments/assets/3cdd84cf-103f-48e8-8738-210aa0595d5f">
+
+Test that demo is working
+---
+Go to http://<your ui host>:5173/ and from the main screen, choose “Start Demo Game” — you should see the following with the snakes moving around by themselves.
+
+
 Troubleshooting
 ===
+**`docker compose up` just hangs**
+Check two things:
+1. Is the network you're on restricting Docker? (Try tethering from your phone.)
+2. Is your Docker container already installed and therefore there's nothing left to do?
+
 **Error: The container name "/temporal-postgresql" is already in use**
 This can happen if you have installed another Docker container with, for example, one of our [Getting Started](https://learn.temporal.io/getting_started/) examples that uses the same default name.
 
@@ -87,6 +152,16 @@ services:
 ```
 
 **The QR code from the lobby just goes to localhost, which isn't valid on my phone**
+TODO.
+
+**SOCKETIO_HOST environment variable is not defined when running npm run snake-worker-host-worker**
+Don't forget that before you run this command, you have to type the following (even though it's already in the `.env` file in the directory):
+
+```
+export SOCKETIO_HOST=http://127.0.0.1:5173
+```
+
+**When attempting to run the demo, the game screen just says "Loading game..."**
 TODO.
 
 Credit
