@@ -135,12 +135,15 @@ Go to http://<your ui host>:5173/ and from the main screen, choose “Start Demo
 
 Troubleshooting
 ===
-**`docker compose up` just hangs**
+
+`docker compose up` just hangs
+---
 Check two things:
 1. Is the network you're on restricting Docker? (Try tethering from your phone.)
 2. Is your Docker container already installed and therefore there's nothing left to do?
 
-**Error: The container name "/temporal-postgresql" is already in use**
+Error: The container name "/temporal-postgresql" is already in use
+---
 This can happen if you have installed another Docker container with, for example, one of our [Getting Started](https://learn.temporal.io/getting_started/) examples that uses the same default name.
 
 To give this demo's container a different name, modify the `docker-compose.yaml` file and change the following line:
@@ -151,17 +154,20 @@ services:
     container_name: temporal-postgresql-demo # Change name here
 ```
 
-**The QR code from the lobby just goes to localhost, which isn't valid on my phone**
+The QR code from the lobby just goes to localhost, which isn't valid on my phone
+---
 TODO.
 
-**SOCKETIO_HOST environment variable is not defined when running npm run snake-worker-host-worker**
+SOCKETIO_HOST environment variable is not defined when running npm run snake-worker-host-worker
+---
 Don't forget that before you run this command, you have to type the following (even though it's already in the `.env` file in the directory):
 
 ```
 export SOCKETIO_HOST=http://127.0.0.1:5173
 ```
 
-**When attempting to run the demo, the game screen just says "Loading game..."**
+When attempting to run the demo, the game screen just says "Loading game..."
+---
 TODO.
 
 Credit
