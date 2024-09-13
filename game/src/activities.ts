@@ -4,7 +4,6 @@ import { heartbeat, cancelled } from '@temporalio/activity';
 import { Client, WorkflowNotFoundError } from '@temporalio/client';
 import { log } from '@temporalio/activity';
 import { temporal } from '@temporalio/proto';
-import Long from 'long';
 import { workerStartedSignal } from './workflows';
 
 const workflowBundleOptions = () =>
@@ -61,31 +60,35 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
       let poll = true;
       cancelled().catch(() => poll = false);
 
-      let lastEventId: Long | undefined = undefined;
+      type NextPageToken = Uint8Array | null;
+
+      let nextPageToken: NextPageToken = null;
+      let lastRunId: string | null = null;
 
       while (poll) {
-        let nextPageToken: Uint8Array | undefined;
         // Cannot get withAbortSignal to work
         // (node:20824) MaxListenersExceededWarning: Possible EventTarget memory leak detected. 11 abort listeners added to [AbortSignal]. MaxListeners is 10. Use events.setMaxListeners() to increase limit
         // FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
         const history = await client.workflowService.getWorkflowExecutionHistory({
           namespace,
-          execution: { workflowId: snakeId },
+          execution: { workflowId: snakeId, runId: lastRunId },
           waitNewEvent: true,
           nextPageToken
         });
         if (!poll) { break }
 
-        nextPageToken = history.nextPageToken;
+        nextPageToken = history.nextPageToken as NextPageToken; // Can't understand why this cast is necessary
+        if (nextPageToken == null || nextPageToken.length === 0) {
+          lastRunId = null;
+          continue;
+        }
+
         const events = history.history?.events || [];
         for (const event of events) {
-          if (event.eventId) {
-            if (lastEventId && event.eventId.lte(lastEventId)) {
-              continue;
-            }
-            lastEventId = event.eventId;
-          }
           switch (event.eventType) {
+            case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED:
+              lastRunId = event.workflowExecutionStartedEventAttributes!.originalExecutionRunId as string;
+              break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_STARTED:
               const identity = event.workflowTaskStartedEventAttributes!.identity;
               if (identity) {
@@ -94,10 +97,6 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
               break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_TIMED_OUT:
               socket.emit('worker:timeout', { snakeId });
-              break;
-            case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_EXECUTION_CONTINUED_AS_NEW:
-              lastEventId = undefined;
-              nextPageToken = undefined;
               break;
           }
         }
