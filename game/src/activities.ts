@@ -28,6 +28,7 @@ export function buildWorkerActivities(namespace: string, client: Client, connect
         activities: buildGameActivities(socketHost),
         identity,
         stickyQueueScheduleToStartTimeout: 200,
+        shutdownGraceTime: 100,
       })
 
       const round = client.workflow.getHandle(roundId);
