@@ -60,7 +60,7 @@
 		roundLoading = false;
 
 		for (const id of Object.keys(round.apples)) {
-			workers[id] = { identity: id, state: 'running', workflows: new Set() };
+			workers[id] = { identity: id, state: 'stopped', workflows: new Set() };
 		}
 		workerIds = Object.keys(workers);
 		workerIds.sort();

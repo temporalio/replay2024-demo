@@ -20,6 +20,7 @@ export function buildWorkerActivities(namespace: string, client: Client, connect
     snakeWorker: async (roundId: string, identity: string) => {
       const heartbeater = setInterval(heartbeat, 200);
 
+      const now = new Date();
       const worker = await Worker.create({
         connection,
         namespace,
@@ -29,6 +30,7 @@ export function buildWorkerActivities(namespace: string, client: Client, connect
         identity,
         stickyQueueScheduleToStartTimeout: 200,
       })
+      console.log(`Worker took ${new Date().getTime() - now.getTime()}ms to start`);
 
       const round = client.workflow.getHandle(roundId);
 
