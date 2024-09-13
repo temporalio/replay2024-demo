@@ -506,7 +506,7 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
     startChild(SnakeWorkflow, {
       workflowId: snake.id,
       taskQueue: 'snakes',
-      workflowTaskTimeout: 500,
+      workflowTaskTimeout: '1 second',
       args: [{
         roundId: ROUND_WF_ID,
         id: snake.id,
