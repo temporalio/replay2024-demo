@@ -35,7 +35,7 @@ export function buildWorkerActivities(namespace: string, client: Client, connect
       const round = client.workflow.getHandle(roundId);
 
       try {
-        round.signal(workerStartedSignal, { identity }),
+        await round.signal(workerStartedSignal, { identity }),
         await worker.runUntil(cancelled())
       } catch (err) {
         if (err instanceof WorkflowNotFoundError) {
