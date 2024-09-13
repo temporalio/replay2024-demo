@@ -29,6 +29,7 @@ export function buildWorkerActivities(namespace: string, client: Client, connect
         identity,
         stickyQueueScheduleToStartTimeout: 200,
         shutdownGraceTime: 100,
+        debugMode: true,
       })
 
       const round = client.workflow.getHandle(roundId);

@@ -38,6 +38,7 @@ async function run({
     taskQueue,
     activities: buildWorkerActivities(namespace, client, connection, requiredEnv('SOCKETIO_HOST')),
     maxConcurrentActivityTaskExecutions: 2,
+    debugMode: true,
   });
 
   await worker.run();
