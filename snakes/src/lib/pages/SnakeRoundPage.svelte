@@ -228,32 +228,33 @@
 			}
 		});
 
-		const deltaX = nearestApple.x - head.head.x;
-		const deltaY = nearestApple.y - head.head.y;
-
 		let preferredDirections: Direction[] = [];
 
-		if (Math.abs(deltaX) > Math.abs(deltaY)) {
-			if (deltaX > 0) {
-				preferredDirections.push('right');
-			} else if (deltaX < 0) {
-				preferredDirections.push('left');
-			}
-		} else {
-			if (deltaY > 0) {
-				preferredDirections.push('down');
-			} else if (deltaY < 0) {
-				preferredDirections.push('up');
-			}
-		}
+		if (nearestApple) {
+			const deltaX = nearestApple.x - head.head.x;
+			const deltaY = nearestApple.y - head.head.y;
 
-		if (deltaY !== 0) {
-			preferredDirections.push(deltaY > 0 ? 'down' : 'up');
-		}
-		if (deltaX !== 0) {
-			preferredDirections.push(deltaX > 0 ? 'right' : 'left');
-		}
+			if (Math.abs(deltaX) > Math.abs(deltaY)) {
+				if (deltaX > 0) {
+					preferredDirections.push('right');
+				} else if (deltaX < 0) {
+					preferredDirections.push('left');
+				}
+			} else {
+				if (deltaY > 0) {
+					preferredDirections.push('down');
+				} else if (deltaY < 0) {
+					preferredDirections.push('up');
+				}
+			}
 
+			if (deltaY !== 0) {
+				preferredDirections.push(deltaY > 0 ? 'down' : 'up');
+			}
+			if (deltaX !== 0) {
+				preferredDirections.push(deltaX > 0 ? 'right' : 'left');
+			}
+		}
 		const direction = preferredDirections[Math.floor(Math.random() * preferredDirections.length)];
 
 		// We have to go somewhere, so pick a random direction if we can't decide.
