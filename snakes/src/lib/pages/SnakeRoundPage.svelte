@@ -197,6 +197,7 @@
 			for (const worker of Object.values(workers)) {
 				worker.workflows.delete(snakeId);
 			}
+			console.log(snakeId, 'time out');
 			workers = workers;
 		});
 

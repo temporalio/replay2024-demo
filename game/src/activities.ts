@@ -127,7 +127,6 @@ export function buildGameActivities(socketHost: string) {
     },
     snakeNom: async function(snakeId: string, durationMs: number) {
       await new Promise((resolve) => setTimeout(resolve, durationMs));
-      socket.emit('snakeNom', { snakeId });
     },
   }
 };

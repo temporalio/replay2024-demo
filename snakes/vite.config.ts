@@ -162,9 +162,6 @@ const webSocketServer = {
 				}
 			});
 
-			socket.on('snakeNom', ({ snakeId }) => {
-				io.emit('snakeNom', { snakeId });
-			});
 			socket.on('snakeMoved', ({ snakeId, segments }) => {
 				io.emit('snakeMoved', { snakeId, segments });
 			});
