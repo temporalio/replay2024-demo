@@ -21,7 +21,7 @@ import { GameConfig, Game, Teams, Round, Snake, Snakes, Direction, Point, Segmen
 
 const ROUND_WF_ID = 'SnakeGameRound';
 const APPLE_POINTS = 10;
-const SNAKE_MOVES_BEFORE_CAN = 50;
+const SNAKE_MOVES_BEFORE_CAN = 20;
 const SNAKE_WORKER_DOWN_TIME = '1 seconds';
 
 const { emit } = proxyLocalActivities<ReturnType<typeof buildGameActivities>>({
