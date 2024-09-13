@@ -14,6 +14,7 @@ import {
   ActivityCancellationType,
   CancellationScope,
   isCancellation,
+  ChildWorkflowHandle,
 } from '@temporalio/workflow';
 
 import { buildGameActivities, buildWorkerActivities, buildTrackerActivities, Event } from './activities';
@@ -217,7 +218,7 @@ export async function RoundWorkflow({ config, teams, snakes }: RoundWorkflowInpu
 
   randomizeRound(round);
 
-  round.workerIds = createWorkerIds(snakes.length * 2); 
+  round.workerIds = createWorkerIds(snakes.length * 2);
 
   try {
     await startWorkerManagers(round.workerIds);
@@ -285,7 +286,7 @@ export async function SnakeWorkerWorkflow({ roundId, identity }: SnakeWorkerWork
 
   const { snakeWorker } = proxyActivities<ReturnType<typeof buildWorkerActivities>>({
     taskQueue,
-    startToCloseTimeout: '1 hour',
+    startToCloseTimeout: '1 year',
     heartbeatTimeout: 500,
     cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
   });
@@ -294,11 +295,11 @@ export async function SnakeWorkerWorkflow({ roundId, identity }: SnakeWorkerWork
     try {
       scope = new CancellationScope();
       await scope.run(() => snakeWorker(roundId, identity));
-    } catch (e) {
-      if (isCancellation(e)) {
+    } catch (err) {
+      if (isCancellation(err)) {
         // await sleep(SNAKE_WORKER_DOWN_TIME);
       } else {
-        throw e;
+        log.error('SnakeWorker failure, retrying', { error: err });
       }
     }
   }
@@ -493,9 +494,9 @@ async function startWorkerManagers(identies: string[]) {
       workflowId: identity,
       args: [{ roundId: ROUND_WF_ID, identity }],
     });
-  })
+  });
   try {
-    await Promise.all(snakeWorkerManagers);
+    return await Promise.all(snakeWorkerManagers);
   } catch (err) {
     log.error('Failed to start worker managers', { error: err });
     throw(err);

@@ -193,11 +193,11 @@
 			workers = workers;
 		});
 
-		socket.on('worker:timeout', ({ snakeId }) => {
+		socket.on('worker:timeout', ({ snakeId, type, kind, identity, latency }) => {
 			for (const worker of Object.values(workers)) {
 				worker.workflows.delete(snakeId);
 			}
-			console.log(snakeId, 'time out');
+			console.log(snakeId, 'task timeout', { type, kind, identity, latency });
 			workers = workers;
 		});
 
