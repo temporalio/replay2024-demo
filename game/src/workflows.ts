@@ -114,7 +114,8 @@ export async function GameWorkflow(config: GameConfig): Promise<void> {
   });
 
   while (!finished) {
-    await condition(() => newRound !== undefined);
+    await condition(() => finished || newRound !== undefined);
+    if (finished) { break; }
 
     roundScope = new CancellationScope();
 
@@ -307,26 +308,21 @@ type SnakeWorkflowInput = {
   id: string;
   direction: Direction;
   nomsPerMove: number;
-  nomActivity: boolean;
   nomDuration: number;
 };
 
-export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomActivity, nomDuration }: SnakeWorkflowInput): Promise<void> {
+export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDuration }: SnakeWorkflowInput): Promise<void> {
   setHandler(snakeChangeDirectionSignal, (newDirection) => {
     direction = newDirection;
   });
 
-  let snakeNom: (id: string, duration: number) => Promise<void>;
-
-  if (nomActivity) {
-    snakeNom = proxyActivities<ReturnType <typeof buildGameActivities>>({
-      startToCloseTimeout: nomDuration * 2,
-    }).snakeNom;
-  } else {
-    snakeNom = proxyLocalActivities<ReturnType <typeof buildGameActivities>>({
-      startToCloseTimeout: nomDuration * 2,
-    }).snakeNom;
-  }
+  const { snakeNom } = proxyActivities<ReturnType <typeof buildGameActivities>>({
+    startToCloseTimeout: nomDuration * 2,
+    retry: {
+      initialInterval: 1,
+      backoffCoefficient: 1,
+    }
+  });
 
   const round = getExternalWorkflowHandle(roundId);
   const noms = Array.from({ length: nomsPerMove });
@@ -334,9 +330,14 @@ export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomAc
 
   while (true) {
     await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
-    await round.signal(snakeMoveSignal, id, direction);
+    try {
+      await round.signal(snakeMoveSignal, id, direction);
+    } catch (err) {
+      log.info('Cannot signal round, exiting');
+      break;
+    }
     if (moves++ > SNAKE_MOVES_BEFORE_CAN) {
-      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, direction, nomsPerMove, nomActivity, nomDuration });
+      await continueAsNew<typeof SnakeWorkflow>({ roundId, id, direction, nomsPerMove, nomDuration });
     }
   }
 }
@@ -486,7 +487,12 @@ async function startWorkerManagers(count: number) {
       args: [{ roundId: ROUND_WF_ID, identity }],
     });
   })
-  return await Promise.all(snakeWorkerManagers);
+  try {
+    await Promise.all(snakeWorkerManagers);
+  } catch (err) {
+    log.error('Failed to start worker managers', { error: err });
+    throw(err);
+  }
 }
 
 async function startSnakeTrackers(snakes: Snakes) {
@@ -504,14 +510,18 @@ async function startSnakes(config: GameConfig, snakes: Snakes) {
         roundId: ROUND_WF_ID,
         id: snake.id,
         direction: snake.segments[0].direction,
-        nomActivity: config.nomActivity,
         nomsPerMove: config.nomsPerMove,
         nomDuration: config.nomDuration,
       }]
     })
   )
 
-  await Promise.all(commands);
+  try {
+    await Promise.all(commands);
+  } catch (err) {
+    log.error('Failed to start snakes', { error: err });
+    throw(err);
+  }
 }
 
 function randomizeRound(round: Round) {

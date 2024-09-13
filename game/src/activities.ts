@@ -1,7 +1,8 @@
 import { io } from 'socket.io-client';
 import { Worker, NativeConnection } from '@temporalio/worker';
 import { heartbeat, cancelled } from '@temporalio/activity';
-import { Client } from '@temporalio/client';
+import { Client, WorkflowNotFoundError } from '@temporalio/client';
+import { log } from '@temporalio/activity';
 import { temporal } from '@temporalio/proto';
 import Long from 'long';
 import { workerStartedSignal } from './workflows';
@@ -35,6 +36,12 @@ export function buildWorkerActivities(namespace: string, client: Client, connect
       try {
         round.signal(workerStartedSignal, { identity }),
         await worker.runUntil(cancelled())
+      } catch (err) {
+        if (err instanceof WorkflowNotFoundError) {
+          log.info('Round not found, exiting');
+          return;
+        }
+        throw(err);
       } finally {
         clearInterval(heartbeater);
       }
