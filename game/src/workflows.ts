@@ -28,13 +28,6 @@ const { emit } = proxyLocalActivities<ReturnType<typeof buildGameActivities>>({
   startToCloseTimeout: '1 seconds',
 });
 
-const { snakeWorker } = proxyActivities<ReturnType<typeof buildWorkerActivities>>({
-  taskQueue: 'snake-workers',
-  startToCloseTimeout: '1 hour',
-  heartbeatTimeout: 500,
-  cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
-});
-
 const { snakeTracker } = proxyActivities<ReturnType<typeof buildTrackerActivities>>({
   heartbeatTimeout: 500,
   startToCloseTimeout: '1 hour',
@@ -160,6 +153,7 @@ export async function RoundWorkflow({ config, teams, snakes }: RoundWorkflowInpu
     teams: teams,
     snakes: snakes.reduce<Snakes>((acc, snake) => { acc[snake.id] = snake; return acc; }, {}),
     finished: false,
+    workerIds: [],
   };
 
   const snakeMoves: SnakeMove[] = [];
@@ -223,20 +217,13 @@ export async function RoundWorkflow({ config, teams, snakes }: RoundWorkflowInpu
 
   randomizeRound(round);
 
-  const workerCount = snakes.length * 2;
+  round.workerIds = createWorkerIds(snakes.length * 2); 
 
   try {
-    await startWorkerManagers(workerCount);
+    await startWorkerManagers(round.workerIds);
     await startSnakeTrackers(round.snakes);
     await startSnakes(round.config, round.snakes);
     await emit([{ type: 'roundLoading', payload: { round } }]);
-
-    // Wait for all workers to register
-    while (true) {
-      await condition(() => workersStarted.length > 0);
-      await processSignals();
-      if (Object.keys(round.apples).length === workerCount) { break; }
-    }
 
     // Start the round
     round.startedAt = Date.now();
@@ -281,11 +268,26 @@ type SnakeWorkerWorkflowInput = {
 };
 
 export async function SnakeWorkerWorkflow({ roundId, identity }: SnakeWorkerWorkflowInput): Promise<void> {
-  const round = getExternalWorkflowHandle(roundId);
   let scope: CancellationScope | undefined;
 
   setHandler(workerStopSignal, () => {
     if (scope) { scope.cancel() }
+  });
+
+  let taskQueue: string;
+  if (identity === 'snake-worker-1' || identity === 'snake-worker-2') {
+    taskQueue = 'snake-workers-1';
+  } else if (identity === 'snake-worker-3' || identity === 'snake-worker-4') {
+    taskQueue = 'snake-workers-2';
+  } else {
+    taskQueue = 'snake-workers-3';
+  }
+
+  const { snakeWorker } = proxyActivities<ReturnType<typeof buildWorkerActivities>>({
+    taskQueue,
+    startToCloseTimeout: '1 hour',
+    heartbeatTimeout: 500,
+    cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
   });
 
   while (true) {
@@ -294,8 +296,7 @@ export async function SnakeWorkerWorkflow({ roundId, identity }: SnakeWorkerWork
       await scope.run(() => snakeWorker(roundId, identity));
     } catch (e) {
       if (isCancellation(e)) {
-        // Let workers start again faster for now.
-        await sleep(SNAKE_WORKER_DOWN_TIME);
+        // await sleep(SNAKE_WORKER_DOWN_TIME);
       } else {
         throw e;
       }
@@ -480,9 +481,14 @@ function buildRoundTeams(game: Game): Teams {
   return teams;
 }
 
-async function startWorkerManagers(count: number) {
-  const snakeWorkerManagers = Array.from({ length: count }).map((_, i) => {
-    const identity = `snake-worker-${i + 1}`;
+function createWorkerIds(count: number): string[] {
+  return Array.from({ length: count }).map((_, i) => {
+    return `snake-worker-${i + 1}`;
+  });
+}
+
+async function startWorkerManagers(identies: string[]) {
+  const snakeWorkerManagers = identies.map((identity) => {
     return startChild(SnakeWorkerWorkflow, {
       workflowId: identity,
       args: [{ roundId: ROUND_WF_ID, identity }],
