@@ -64,7 +64,7 @@ export class Replay2024DemoStack extends cdk.Stack {
     const gameUiContainer = uiTaskDefinition.addContainer('GameUiContainer', {
       image: ecs.ContainerImage.fromEcrRepository(
         ecr.Repository.fromRepositoryName(this, 'UiRepo', 'temporal-replay-demo-2024-game-ui'),
-        'v1.0.6'  // Use 'latest' tag or your specific image tag
+        'v1.0.7'  // Use 'latest' tag or your specific image tag
       ),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'game-ui' }),
       environment: {
@@ -91,7 +91,7 @@ export class Replay2024DemoStack extends cdk.Stack {
 
     // Create a listener for the NLB
     const nlbListener = nlb.addListener('PublicListener', {
-      port: 5173,
+      port: 80,
     });
 
     // Add the Fargate service to the NLB listener
@@ -125,7 +125,7 @@ export class Replay2024DemoStack extends cdk.Stack {
     const gameWorkerContainer = workerTaskDefinition.addContainer('GameWorkerContainer', {
       image: ecs.ContainerImage.fromEcrRepository(
         ecr.Repository.fromRepositoryName(this, 'WorkerRepo', 'temporal-replay-demo-2024-game-worker'),
-        'v1.0.6'  // Use 'latest' tag or your specific image tag
+        'v1.0.7'  // Use 'latest' tag or your specific image tag
       ),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'game-worker' }),
       environment: {
@@ -133,7 +133,7 @@ export class Replay2024DemoStack extends cdk.Stack {
         'TEMPORAL_NAMESPACE': 'replay-2024-demo.sdvdw',
         'TEMPORAL_CLIENT_CERT_PATH': 'replay-2024-demo.sdvdw.crt',
         'TEMPORAL_CLIENT_KEY_PATH': 'replay-2024-demo.sdvdw.key',
-        'SOCKETIO_HOST': `http://${nlbDnsName}:5173`,
+        'SOCKETIO_HOST': `http://${nlbDnsName}:80`,
       },
     });
 
