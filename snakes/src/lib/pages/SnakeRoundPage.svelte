@@ -30,6 +30,7 @@
 		state: WorkerState;
 		workflows: Set<string>;
 	};
+	let workerIds: string[] = [];
 	let workers: Record<string, Worker> = {};
 	let showWorkers = false;
 
@@ -61,6 +62,8 @@
 		for (const id of Object.keys(round.apples)) {
 			workers[id] = { identity: id, state: 'running', workflows: new Set() };
 		}
+		workerIds = Object.keys(workers);
+		workerIds.sort();
 
 		board.update(round);
 
@@ -315,7 +318,8 @@
 
 {#if showWorkers}
 	<div id="workers">
-		{#each Object.entries(workers) as [id, worker] (id)}
+		{#each workerIds as id}
+			{@const worker = workers[id]}
 			{#if worker.state == 'running'}
 				<div class="worker worker-running">
 					{worker.workflows.size > 0 ? '🐍'.repeat(worker.workflows.size) : '😴'}

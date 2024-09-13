@@ -318,6 +318,7 @@ export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDu
 
   const { snakeNom } = proxyActivities<ReturnType <typeof buildGameActivities>>({
     startToCloseTimeout: nomDuration * 2,
+    taskQueue: 'game',
     retry: {
       initialInterval: 1,
       backoffCoefficient: 1,
