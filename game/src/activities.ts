@@ -5,6 +5,7 @@ import { Client, WorkflowNotFoundError } from '@temporalio/client';
 import { log } from '@temporalio/activity';
 import { temporal } from '@temporalio/proto';
 import { workerStartedSignal } from './workflows';
+import { google } from '@temporalio/proto';
 
 const workflowBundleOptions = () =>
   process.env.NODE_ENV === 'production'
@@ -35,7 +36,7 @@ export function buildWorkerActivities(namespace: string, client: Client, connect
       const round = client.workflow.getHandle(roundId);
 
       try {
-        round.signal(workerStartedSignal, { identity }),
+        await round.signal(workerStartedSignal, { identity }),
         await worker.runUntil(cancelled())
       } catch (err) {
         if (err instanceof WorkflowNotFoundError) {
@@ -56,6 +57,10 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
     console.log('tracker activity socket connection error', err);
   });
 
+  function timestampToDate(timestamp: google.protobuf.ITimestamp): Date {
+    return new Date(timestamp.seconds!.multiply(1000).toNumber() + timestamp.nanos! / 1000000);
+  }
+
   return {
     snakeTracker: async function(snakeId: string) {
       const heartbeater = setInterval(heartbeat, 200);
@@ -66,6 +71,8 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
 
       let nextPageToken: NextPageToken = null;
       let lastRunId: string | null = null;
+      let taskScheduledTime: Date | null = null;
+      let taskQueueKind: temporal.api.enums.v1.TaskQueueKind | null | undefined = null;
 
       while (poll) {
         // Cannot get withAbortSignal to work
@@ -97,8 +104,38 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
                 socket.emit('worker:execution', { identity, snakeId });
               }
               break;
+            case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_SCHEDULED:
+              taskScheduledTime = timestampToDate(event.eventTime!);
+              taskQueueKind = event.workflowTaskScheduledEventAttributes!.taskQueue?.kind;
+              break;
+            case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_STARTED:
+              break;
+            case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_COMPLETED:
+              taskQueueKind = null;
+              taskScheduledTime = null;
+              break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_TIMED_OUT:
-              socket.emit('worker:timeout', { snakeId });
+              let type = '';
+              switch (event.workflowTaskTimedOutEventAttributes!.timeoutType) {
+                case temporal.api.enums.v1.TimeoutType.TIMEOUT_TYPE_START_TO_CLOSE:
+                  type = 'startToClose';
+                  break;
+                case temporal.api.enums.v1.TimeoutType.TIMEOUT_TYPE_SCHEDULE_TO_START:
+                  type = 'scheduleToStart';
+                  break;
+                case temporal.api.enums.v1.TimeoutType.TIMEOUT_TYPE_SCHEDULE_TO_CLOSE:
+                  type = 'scheduleToClose';
+                  break;
+                case temporal.api.enums.v1.TimeoutType.TIMEOUT_TYPE_HEARTBEAT:
+                  type = 'heartbeat';
+                  break;
+              }
+              const timedoutAt = timestampToDate(event.eventTime!);
+              const latency = taskScheduledTime ? timedoutAt.getTime() - taskScheduledTime.getTime() : undefined;
+              const kind = taskQueueKind == temporal.api.enums.v1.TaskQueueKind.TASK_QUEUE_KIND_STICKY ? 'sticky' : 'normal';
+              taskQueueKind = null;
+              taskScheduledTime = null;
+              socket.emit('worker:timeout', { snakeId, type, kind, latency });
               break;
           }
         }
@@ -127,7 +164,6 @@ export function buildGameActivities(socketHost: string) {
     },
     snakeNom: async function(snakeId: string, durationMs: number) {
       await new Promise((resolve) => setTimeout(resolve, durationMs));
-      socket.emit('snakeNom', { snakeId });
     },
   }
 };
