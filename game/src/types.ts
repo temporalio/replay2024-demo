@@ -27,6 +27,7 @@ export type Round = {
   teams: Teams;
   snakes: Snakes;
   duration: number;
+  workerIds: string[];
   startedAt?: number;
   finished?: boolean;
 };

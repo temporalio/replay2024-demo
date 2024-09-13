@@ -53,7 +53,12 @@
 					width="100%"
 				/>
 				<div class="text-center">
-					<a class="text-{team}-600 text-2xl font-bold" href="{baseURL}/{workflowId}/team/{team}">{team.toUpperCase()} TEAM</a>
+					<a 
+						class="text-2xl font-bold"
+						class:text-red-600={team === 'red'}
+						class:text-blue-600={team === 'blue'}
+						class:text-orange-500={team === 'orange'}
+						href="{baseURL}/{workflowId}/team/{team}">{team.toUpperCase()} TEAM</a>
 					<div class="text-xl" id="{team}-players">
 						Players: {players[team]}
 					</div>

@@ -24,12 +24,13 @@
 	let scores: Record<string, number> = {};
 	let timeLeft = 0;
 
-	type WorkerState = 'running' | 'stopped';
+	type WorkerState = 'running' | 'stopped' | 'unknown';
 	type Worker = {
 		identity: string;
 		state: WorkerState;
 		workflows: Set<string>;
 	};
+	let workerIds: string[] = [];
 	let workers: Record<string, Worker> = {};
 	let showWorkers = false;
 
@@ -45,6 +46,11 @@
 			Snakes[snake.id] = new SnakeBody(snakeCanvases[snake.id], round, snake);
 		}
 
+		workerIds = round.workerIds;
+		for (const id of workerIds) {
+			workers[id] = { identity: id, state: 'unknown', workflows: new Set() };
+		}
+
 		if (round.config.killWorkers) {
 			showWorkers = true;
 		}
@@ -57,10 +63,6 @@
 
 	const startRound = (round: Round) => {
 		roundLoading = false;
-
-		for (const id of Object.keys(round.apples)) {
-			workers[id] = { identity: id, state: 'running', workflows: new Set() };
-		}
 
 		board.update(round);
 
@@ -315,13 +317,16 @@
 
 {#if showWorkers}
 	<div id="workers">
-		{#each Object.entries(workers) as [id, worker] (id)}
+		{#each workerIds as id}
+			{@const worker = workers[id]}
 			{#if worker.state == 'running'}
 				<div class="worker worker-running">
 					{worker.workflows.size > 0 ? '🐍'.repeat(worker.workflows.size) : '😴'}
 				</div>
-			{:else}
+			{:else if worker.state == 'stopped'}
 				<div class="worker worker-stopped">☠️</div>
+			{:else}
+				<div class="worker worker-unknown">?</div>
 			{/if}
 		{/each}
 	</div>
@@ -365,6 +370,10 @@
 
 	.worker-stopped {
 		background-color: #f00;
+	}
+
+	.worker-unknown {
+		background-color: #121212;
 	}
 
 	#time {

@@ -14,7 +14,6 @@ export const GAME_CONFIG: GameConfig = {
   teamNames: ['blue'], // 'red', 'blue',  
   nomsPerMove: 1,
   nomDuration: 200,
-  nomActivity: false,
   killWorkers: true,
 };
 export const SNAKE_NUMBERS = [...Array(GAME_CONFIG.snakesPerTeam).keys()];

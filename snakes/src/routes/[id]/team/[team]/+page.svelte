@@ -67,7 +67,6 @@
         }
         return false;
     };
-
 </script>
 
 <svelte:head>
@@ -76,10 +75,14 @@
 
 {#if snake && playing}
 <div class="flex flex-col items-center gap-6 text-6xl">
-    <div class="w-16 h-16 rounded border-2"
-      class:border-white={snake.id.endsWith('-0')}
-      class:border-black={snake.id.endsWith('-1')}
-      />
+    <div class="w-16 h-16 rounded border-2 relative"
+      class:bg-red-600={team === 'red'}
+      class:bg-blue-600={team === 'blue'}
+      class:bg-orange-500={team === 'orange'}
+    >
+        <span class="absolute top-2 left-4 rounded bg-black w-2 h-2" />
+        <span class="absolute top-2 right-4 rounded bg-black w-2 h-2" />
+    </div>
     <button class="mx-auto" on:click={() => onMove('up')}>&#8593;</button>
     <div class="flex gap-6">
       <button on:click={() => onMove('left')}>&#8592;</button>
@@ -101,23 +104,25 @@
 <section>
 	<h1 class="retro">{team.toUpperCase()} Lobby</h1>
 	<div class="flex flex-col gap-4 justify-center">
-		<div class="flex gap-4">
-			<div class="border-{team}-500 border-4 rounded-xl p-24 text-white">
-                {#if invite}
-                <div class="invited">
-                    <button class="retro" on:click={acceptInvite}>Accept Invite</button>
-                </div>
-                {:else if accepted}
-                <div class="invite-accepted">
-                    <p>Invite Accepted</p>
-                    <p>Please wait...</p>
-                </div>
-                {/if}
-				<div class="player-count" id="players">
-					Players: {players}
-				</div>
-			</div>
-		</div>
+        <div class="border-4 rounded-xl p-24 text-white text-center"
+                class:border-red-600={team === 'red'}
+                class:border-blue-600={team === 'blue'}
+                class:border-orange-500={team === 'orange'}
+            >
+            {#if invite}
+            <div class="invited">
+                <button class="retro" on:click={acceptInvite}>Accept Invite</button>
+            </div>
+            {:else if accepted}
+            <div class="invite-accepted">
+                <p>Invite Accepted</p>
+                <p>Please wait...</p>
+            </div>
+            {/if}
+            <div class="player-count" id="players">
+                Players: {players}
+            </div>
+        </div>
 	</div>
 </section>
 {/if}

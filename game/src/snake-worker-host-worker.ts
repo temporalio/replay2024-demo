@@ -3,6 +3,15 @@ import { createNativeConnection, createConnection, WorkerEnv, getEnv, requiredEn
 import { buildWorkerActivities } from './activities';
 import { Client } from '@temporalio/client';
 
+const workflowBundleOptions = () =>
+  process.env.NODE_ENV === 'production'
+    ? {
+        workflowBundle: {
+          codePath: require.resolve('../workflow-bundle.js'),
+        },
+      }
+    : { workflowsPath: require.resolve('./workflows') };
+
 /**
  * Run a Worker with an mTLS connection, configuration is provided via environment variables.
  * Note that serverNameOverride and serverRootCACertificate are optional.
@@ -25,9 +34,11 @@ async function run({
   const worker = await Worker.create({
     connection,
     namespace,
-    workflowsPath: require.resolve('./workflows'),
+    ...workflowBundleOptions(),
     taskQueue,
     activities: buildWorkerActivities(namespace, client, connection, requiredEnv('SOCKETIO_HOST')),
+    maxConcurrentActivityTaskExecutions: 2,
+    debugMode: true,
   });
 
   await worker.run();

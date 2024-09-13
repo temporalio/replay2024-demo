@@ -5,7 +5,6 @@ export type GameConfig = {
   snakesPerTeam: number;
   nomsPerMove: number;
   nomDuration: number;
-  nomActivity: boolean;
   killWorkers: boolean;
   roundDuration: number;
 };
@@ -47,6 +46,7 @@ export type Round = {
   teams: Teams;
   snakes: Snakes;
   duration: number;
+  workerIds: string[];
   startedAt?: number;
   finished?: boolean;
 };
