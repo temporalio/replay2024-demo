@@ -18,9 +18,11 @@
   onMount(() => {
     socket = io();
 
-    if ($page.params.name == 'snake-worker-host-worker-1') {
+    let hostId = $page.params.id;
+
+    if (hostId == '1') {
       workerIds = ['snake-worker-1', 'snake-worker-2'];
-    } else if ($page.params.name == 'snake-worker-host-worker-2') {
+    } else if (hostId == '2') {
       workerIds = ['snake-worker-3', 'snake-worker-4'];
     } else {
       workerIds = ['snake-worker-5', 'snake-worker-6'];
