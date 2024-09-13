@@ -15,6 +15,7 @@ import {
   CancellationScope,
   isCancellation,
   ChildWorkflowHandle,
+  workflowInfo,
 } from '@temporalio/workflow';
 
 import { buildGameActivities, buildWorkerActivities, buildTrackerActivities, Event } from './activities';
@@ -192,8 +193,8 @@ export async function RoundWorkflow({ config, teams, snakes }: RoundWorkflowInpu
 
     for (const appleId of applesEaten) {
       if (config.killWorkers) {
-        const worker = getExternalWorkflowHandle(appleId);
-        signals.push(worker.signal(workerStopSignal));
+        const workerManager = workerManagers[appleId];
+        signals.push(workerManager.signal(workerStopSignal));
         events.push({ type: 'worker:stop', payload: { identity: appleId } });
       } else {
         workersStarted.push(appleId);
@@ -219,9 +220,10 @@ export async function RoundWorkflow({ config, teams, snakes }: RoundWorkflowInpu
   randomizeRound(round);
 
   round.workerIds = createWorkerIds(snakes.length * 2);
+  let workerManagers: Record<string, ChildWorkflowHandle<typeof SnakeWorkerWorkflow>> = {};
 
   try {
-    await startWorkerManagers(round.workerIds);
+    workerManagers = await startWorkerManagers(workflowInfo().runId, round.workerIds);
     await startSnakeTrackers(round.snakes);
     await startSnakes(round.config, round.snakes);
     await emit([{ type: 'roundLoading', payload: { round } }]);
@@ -488,18 +490,23 @@ function createWorkerIds(count: number): string[] {
   });
 }
 
-async function startWorkerManagers(identies: string[]) {
-  const snakeWorkerManagers = identies.map((identity) => {
-    return startChild(SnakeWorkerWorkflow, {
-      workflowId: identity,
-      args: [{ roundId: ROUND_WF_ID, identity }],
-    });
-  });
+async function startWorkerManagers(runId: string, identities: string[]): Promise<Record<string, ChildWorkflowHandle<typeof SnakeWorkerWorkflow>>> {
   try {
-    return await Promise.all(snakeWorkerManagers);
+    const handles = await Promise.all(
+      identities.map(identity =>
+        startChild(SnakeWorkerWorkflow, {
+          workflowId: `${runId}-${identity}`,
+          args: [{ roundId: ROUND_WF_ID, identity }],
+        })
+      )
+    );
+
+    return Object.fromEntries(
+      identities.map((identity, index) => [identity, handles[index]])
+    );
   } catch (err) {
     log.error('Failed to start worker managers', { error: err });
-    throw(err);
+    throw err;
   }
 }
 
