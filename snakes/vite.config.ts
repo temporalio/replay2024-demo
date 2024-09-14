@@ -269,8 +269,8 @@ const webSocketServer = {
 				io.emit('worker:execution', { identity, snakeId });
 			});
 
-			socket.on('worker:timeout', ({ snakeId, type, kind, identity, latency }) => {
-				io.emit('worker:timeout', { snakeId, type, kind, latency });
+			socket.on('worker:timeout', ({ snakeId, type, queue, identity, runId }) => {
+				io.emit('worker:timeout', { snakeId, type, queue, identity, runId });
 			});
 		});
 	}

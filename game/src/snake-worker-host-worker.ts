@@ -1,5 +1,5 @@
 import { Worker } from '@temporalio/worker';
-import { createNativeConnection, createConnection, WorkerEnv, getEnv, requiredEnv } from './temporal';
+import { createNativeConnection, createConnection, WorkerEnv, getEnv } from './temporal';
 import { buildWorkerActivities } from './activities';
 import { Client } from '@temporalio/client';
 
@@ -36,9 +36,8 @@ async function run({
     namespace,
     ...workflowBundleOptions(),
     taskQueue,
-    activities: buildWorkerActivities(namespace, client, connection, requiredEnv('SOCKETIO_HOST')),
-    maxConcurrentActivityTaskExecutions: 2,
-    debugMode: true,
+    activities: buildWorkerActivities(namespace, client, connection),
+    maxConcurrentActivityTaskExecutions: 1,
   });
 
   await worker.run();

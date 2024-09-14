@@ -9,9 +9,9 @@
     "lint": "eslint .",
     "game-worker": "ts-node src/game-worker.ts",
     "game-worker.watch": "nodemon src/game-worker.ts",
-    "snake-worker-host-worker-1": "NODE_ENV=production TEMPORAL_TASK_QUEUE=snake-workers-1 ts-node src/snake-worker-host-worker.ts",
-    "snake-worker-host-worker-2": "NODE_ENV=production TEMPORAL_TASK_QUEUE=snake-workers-2 ts-node src/snake-worker-host-worker.ts",
-    "snake-worker-host-worker-3": "NODE_ENV=production TEMPORAL_TASK_QUEUE=snake-workers-3 ts-node src/snake-worker-host-worker.ts",
+    "snake-worker-host-worker-1": "NODE_ENV=production TEMPORAL_TASK_QUEUE=snake-workers-1 nodemon src/snake-worker-host-worker.ts",
+    "snake-worker-host-worker-2": "NODE_ENV=production TEMPORAL_TASK_QUEUE=snake-workers-2 nodemon src/snake-worker-host-worker.ts",
+    "snake-worker-host-worker-3": "NODE_ENV=production TEMPORAL_TASK_QUEUE=snake-workers-3 nodemon src/snake-worker-host-worker.ts",
     "snake-worker-host-worker.watch": "TEMPORAL_TASK_QUEUE=snake-workers nodemon src/snake-worker-host-worker.ts",
     "workflow": "ts-node src/client.ts"
   },
