@@ -5,7 +5,6 @@ import { Client, WorkflowNotFoundError } from '@temporalio/client';
 import { log } from '@temporalio/activity';
 import { temporal } from '@temporalio/proto';
 import { workerStartedSignal } from './workflows';
-import { google } from '@temporalio/proto';
 
 const workflowBundleOptions = () =>
   process.env.NODE_ENV === 'production'
@@ -16,7 +15,7 @@ const workflowBundleOptions = () =>
       }
     : { workflowsPath: require.resolve('./workflows') };
 
-export function buildWorkerActivities(namespace: string, client: Client, connection: NativeConnection, socketHost: string) {
+export function buildWorkerActivities(namespace: string, client: Client, connection: NativeConnection) {
   return {
     snakeWorker: async (roundId: string, identity: string) => {
       const heartbeater = setInterval(heartbeat, 200);
@@ -26,7 +25,6 @@ export function buildWorkerActivities(namespace: string, client: Client, connect
         namespace,
         ...workflowBundleOptions(),
         taskQueue: 'snakes',
-        activities: buildGameActivities(socketHost),
         identity,
         stickyQueueScheduleToStartTimeout: '1 second',
         shutdownGraceTime: 500,
@@ -55,10 +53,6 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
   socket.on('connect_error', (err) => {
     console.log('tracker activity socket connection error', err);
   });
-
-  function timestampToDate(timestamp: google.protobuf.ITimestamp): Date {
-    return new Date(timestamp.seconds!.multiply(1000).toNumber() + timestamp.nanos! / 1000000);
-  }
 
   return {
     snakeTracker: async function(snakeId: string) {
