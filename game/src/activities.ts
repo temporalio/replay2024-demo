@@ -93,8 +93,6 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
 
         const events = history.history?.events || [];
         for (const event of events) {
-          let latency: number | undefined;
-
           switch (event.eventType) {
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED:
               lastRunId = event.workflowExecutionStartedEventAttributes!.originalExecutionRunId as string;
@@ -112,12 +110,6 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_STARTED:
               break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_COMPLETED:
-              const completedAt = timestampToDate(event.eventTime!);
-              latency = taskScheduledTime ? completedAt.getTime() - taskScheduledTime.getTime() : undefined;
-              if (latency && latency > 500) {
-                console.log('slow task completed', { snake: snakeId, kind: taskQueueKind, task: event.eventId?.toNumber(), latency });
-                console.log('UI', `http://localhost:8233/namespaces/default/workflows/${snakeId}/${lastRunId}/history`)
-              }
               taskQueueKind = null;
               taskScheduledTime = null;
               break;
@@ -138,11 +130,11 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
                   break;
               }
               const timedoutAt = timestampToDate(event.eventTime!);
-              latency = taskScheduledTime ? timedoutAt.getTime() - taskScheduledTime.getTime() : undefined;
+              const latency = taskScheduledTime ? timedoutAt.getTime() - taskScheduledTime.getTime() : undefined;
               const kind = taskQueueKind == temporal.api.enums.v1.TaskQueueKind.TASK_QUEUE_KIND_STICKY ? 'sticky' : 'normal';
               taskQueueKind = null;
               taskScheduledTime = null;
-              socket.emit('worker:timeout', { snakeId, type, kind, latency });
+              socket.emit('worker:timeout', { snakeId, type, kind, latency, runId: lastRunId });
               break;
           }
         }
