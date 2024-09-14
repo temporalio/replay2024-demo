@@ -72,7 +72,11 @@ export const roundStartSignal = defineSignal<[RoundStartSignal]>('roundStart');
 export const snakeChangeDirectionSignal = defineSignal<[Direction]>('snakeChangeDirection');
 
 // (Internal) SnakeWorkflow -> Round to trigger a move
-export const snakeMoveSignal = defineSignal<[string, Direction]>('snakeMove');
+type SnakeMoveSignal = {
+  id: string;
+  direction: Direction;
+};
+export const snakeMoveSignal = defineSignal<[SnakeMoveSignal]>('snakeMove');
 
 export const workerStopSignal = defineSignal('workerStop');
 
@@ -165,7 +169,7 @@ export async function RoundWorkflow({ config, teams, snakes }: RoundWorkflowInpu
     return round;
   });
 
-  setHandler(snakeMoveSignal, async (id, direction) => {
+  setHandler(snakeMoveSignal, async ({ id, direction }) => {
     if (round.finished) { return; }
     snakeMoves.push({ id, direction });
   });
@@ -336,7 +340,7 @@ export async function SnakeWorkflow({ roundId, id, direction, nomsPerMove, nomDu
   while (true) {
     await Promise.all(noms.map(() => snakeNom(id, nomDuration)));
     try {
-      await round.signal(snakeMoveSignal, id, direction);
+      await round.signal(snakeMoveSignal, { id, direction });
     } catch (err) {
       log.info('Cannot signal round, exiting');
       break;
