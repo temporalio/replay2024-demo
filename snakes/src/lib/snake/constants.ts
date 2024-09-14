@@ -11,7 +11,7 @@ export const GAME_CONFIG: GameConfig = {
   height: 25,
   roundDuration: 60,
   snakesPerTeam: 1,
-  teamNames: ['blue'], // 'red', 'blue',  
+  teamNames: ['red', 'blue','orange'],
   nomsPerMove: 1,
   nomDuration: 200,
   killWorkers: true,
