@@ -71,7 +71,8 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
       let nextPageToken: NextPageToken = null;
       let lastRunId: string | null = null;
       let taskScheduledTime: Date | null = null;
-      let taskQueueKind: temporal.api.enums.v1.TaskQueueKind | null | undefined = null;
+      let taskQueueName: string | null | undefined = null;
+      let identity: string | null | undefined = null;
 
       while (poll) {
         // Cannot get withAbortSignal to work
@@ -98,20 +99,18 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
               lastRunId = event.workflowExecutionStartedEventAttributes!.originalExecutionRunId as string;
               break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_STARTED:
-              const identity = event.workflowTaskStartedEventAttributes!.identity;
+              identity = event.workflowTaskStartedEventAttributes!.identity;
               if (identity) {
                 socket.emit('worker:execution', { identity, snakeId });
               }
               break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_SCHEDULED:
-              taskScheduledTime = timestampToDate(event.eventTime!);
-              taskQueueKind = event.workflowTaskScheduledEventAttributes!.taskQueue?.kind;
+              taskQueueName = event.workflowTaskScheduledEventAttributes!.taskQueue?.name;
+              identity = null;
               break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_STARTED:
               break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_COMPLETED:
-              taskQueueKind = null;
-              taskScheduledTime = null;
               break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_TIMED_OUT:
               let type = '';
@@ -129,12 +128,8 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
                   type = 'heartbeat';
                   break;
               }
-              const timedoutAt = timestampToDate(event.eventTime!);
-              const latency = taskScheduledTime ? timedoutAt.getTime() - taskScheduledTime.getTime() : undefined;
-              const kind = taskQueueKind == temporal.api.enums.v1.TaskQueueKind.TASK_QUEUE_KIND_STICKY ? 'sticky' : 'normal';
-              taskQueueKind = null;
               taskScheduledTime = null;
-              socket.emit('worker:timeout', { snakeId, type, kind, latency, runId: lastRunId });
+              socket.emit('worker:timeout', { snakeId, type, queue: taskQueueName, identity, runId: lastRunId });
               break;
           }
         }
