@@ -64,7 +64,7 @@ export class Replay2024DemoStack extends cdk.Stack {
     const gameUiContainer = uiTaskDefinition.addContainer('GameUiContainer', {
       image: ecs.ContainerImage.fromEcrRepository(
         ecr.Repository.fromRepositoryName(this, 'UiRepo', 'temporal-replay-demo-2024-game-ui'),
-        'v1.1.green'  // Use 'latest' tag or your specific image tag
+        'v1.2.green'  // Use 'latest' tag or your specific image tag
       ),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'game-ui' }),
       environment: {
