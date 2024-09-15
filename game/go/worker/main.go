@@ -76,8 +76,7 @@ func main() {
 
 	defer c.Close()
 
-	// Create a worker for the "game" task queue
-	w := worker.New(c, "snakes", worker.Options{
+	w := worker.New(c, os.Getenv("TEMPORAL_TASK_QUEUE"), worker.Options{
 		MaxConcurrentActivityExecutionSize: 1,
 	})
 
