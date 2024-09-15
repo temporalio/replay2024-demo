@@ -125,7 +125,7 @@ export class Replay2024DemoStack extends cdk.Stack {
     const gameWorkerContainer = workerTaskDefinition.addContainer('GameWorkerContainer', {
       image: ecs.ContainerImage.fromEcrRepository(
         ecr.Repository.fromRepositoryName(this, 'WorkerRepo', 'temporal-replay-demo-2024-game-worker'),
-        'v1.2.green'  // Use 'latest' tag or your specific image tag
+        'v1.3.snake5secsdown'  // Use 'latest' tag or your specific image tag
       ),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'game-worker' }),
       environment: {
