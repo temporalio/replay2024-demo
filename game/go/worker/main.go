@@ -76,9 +76,7 @@ func main() {
 
 	defer c.Close()
 
-	w := worker.New(c, os.Getenv("TEMPORAL_TASK_QUEUE"), worker.Options{
-		MaxConcurrentActivityExecutionSize: 1,
-	})
+	w := worker.New(c, os.Getenv("TEMPORAL_TASK_QUEUE"), worker.Options{})
 
 	// Register the activity and workflow
 	a := snakes.Activities{Client: c}
