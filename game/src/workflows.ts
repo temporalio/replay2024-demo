@@ -303,13 +303,8 @@ export async function SnakeWorkerWorkflow({ roundId, identity }: SnakeWorkerWork
       scope = new CancellationScope();
       await scope.run(() => snakeWorker(roundId, identity));
     } catch (err) {
-<<<<<<< HEAD
       if (isCancellation(err)) { // TODO make snake workers call cancellation
         // await sleep(SNAKE_WORKER_DOWN_TIME);
-=======
-      if (isCancellation(err)) {
-        await sleep(SNAKE_WORKER_DOWN_TIME);
->>>>>>> main
       } else {
         log.error('SnakeWorker failure, retrying', { error: err });
       }
