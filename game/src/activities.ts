@@ -64,7 +64,6 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
 
       let nextPageToken: NextPageToken = null;
       let lastRunId: string | null = null;
-      let taskScheduledTime: Date | null = null;
       let taskQueueName: string | null | undefined = null;
       let identity: string | null | undefined = null;
 
@@ -92,19 +91,17 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED:
               lastRunId = event.workflowExecutionStartedEventAttributes!.originalExecutionRunId as string;
               break;
-            case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_STARTED:
-              identity = event.workflowTaskStartedEventAttributes!.identity;
-              if (identity) {
-                socket.emit('worker:execution', { identity, snakeId });
-              }
-              break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_SCHEDULED:
               taskQueueName = event.workflowTaskScheduledEventAttributes!.taskQueue?.name;
               identity = null;
               break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_STARTED:
+              identity = event.workflowTaskStartedEventAttributes!.identity;
               break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_COMPLETED:
+              const { seconds, nanos } = event.eventTime!;
+              const time = (seconds!.toNumber() * 1000) + Math.floor(nanos! / 1000000);
+              socket.emit('task:completed', { identity, snakeId, time });
               break;
             case temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_TASK_TIMED_OUT:
               let type = '';
@@ -122,8 +119,7 @@ export function buildTrackerActivities(namespace: string, client: Client, socket
                   type = 'heartbeat';
                   break;
               }
-              taskScheduledTime = null;
-              socket.emit('worker:timeout', { snakeId, type, queue: taskQueueName, identity, runId: lastRunId });
+              socket.emit('task:timeout', { snakeId, type, queue: taskQueueName, identity, runId: lastRunId });
               break;
           }
         }

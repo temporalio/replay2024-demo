@@ -118,7 +118,7 @@ func (a *Activities) SnakeWorker(ctx context.Context, roundId string, identity s
 	w := worker.New(a.Client, "snakes", worker.Options{
 		Identity:                     identity,
 		StickyScheduleToStartTimeout: time.Second,
-		WorkerStopTimeout:            500 * time.Millisecond,
+		WorkerStopTimeout:            200 * time.Millisecond,
 	})
 
 	// Register the SnakeWorkflow with the worker
@@ -145,5 +145,5 @@ func (a *Activities) SnakeWorker(ctx context.Context, roundId string, identity s
 		return err
 	}
 
-	return nil
+	return temporal.NewCanceledError()
 }

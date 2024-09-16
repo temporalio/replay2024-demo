@@ -261,16 +261,16 @@ const webSocketServer = {
 				io.emit('worker:start', { identity });
 			});
 
-			socket.on('worker:stop', ({ identity }) => {
-				io.emit('worker:stop', { identity });
+			socket.on('worker:stop', ({ identity, time }) => {
+				io.emit('worker:stop', { identity, time });
 			});
 
-			socket.on('worker:execution', ({ identity, snakeId }) => {
-				io.emit('worker:execution', { identity, snakeId });
+			socket.on('task:completed', ({ identity, snakeId, time }) => {
+				io.emit('task:completed', { identity, snakeId, time });
 			});
 
-			socket.on('worker:timeout', ({ snakeId, type, queue, identity, runId }) => {
-				io.emit('worker:timeout', { snakeId, type, queue, identity, runId });
+			socket.on('task:timeout', ({ snakeId, type, queue, identity, runId }) => {
+				io.emit('task:timeout', { snakeId, type, queue, identity, runId });
 			});
 		});
 	}
