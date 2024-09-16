@@ -29,6 +29,7 @@
 		identity: string;
 		state: WorkerState;
 		workflows: Set<string>;
+		stoppedAt: number;
 	};
 	let workerIds: string[] = [];
 	let workers: Record<string, Worker> = {};
@@ -48,7 +49,7 @@
 
 		workerIds = round.workerIds;
 		for (const id of workerIds) {
-			workers[id] = { identity: id, state: 'unknown', workflows: new Set() };
+			workers[id] = { identity: id, state: 'unknown', workflows: new Set(), stoppedAt: 0 };
 		}
 
 		if (round.config.killWorkers) {
@@ -172,15 +173,18 @@
 		socket.emit('fetchRound');
 
 		socket.on('worker:start', ({ identity }) => {
+			console.log('worker:start', { identity });
 			const worker = workers[identity];
 			if (!worker) {
 				return;
 			}
 			worker.state = 'running';
+      worker.stoppedAt = 0;
 			workers = workers;
 		});
 
-		socket.on('worker:execution', ({ identity, snakeId }) => {
+		socket.on('task:completed', ({ identity, snakeId, time }) => {
+			console.log('task:completed', { identity, snakeId, time });
 			for (const worker of Object.values(workers)) {
 				worker.workflows.delete(snakeId);
 			}
@@ -188,25 +192,31 @@
 			if (!worker) {
 				return;
 			}
+      if (time - worker.stoppedAt < 500) {
+        return;
+      }
 			worker.state = 'running';
+      worker.stoppedAt = 0;
 			worker.workflows.add(snakeId);
 			workers = workers;
 		});
 
-		socket.on('worker:timeout', ({ snakeId, type, queue, identity, runId }) => {
+		socket.on('task:timeout', ({ snakeId, type, queue, identity, runId }) => {
 			for (const worker of Object.values(workers)) {
 				worker.workflows.delete(snakeId);
 			}
-			console.log(snakeId, 'task timeout', { type, queue, identity, runId }, `http://localhost:8233/namespaces/default/workflows/${snakeId}/${runId}/history`);
+			// console.log(snakeId, 'task timeout', { type, queue, identity, runId }, `http://localhost:8233/namespaces/default/workflows/${snakeId}/${runId}/history`);
 			workers = workers;
 		});
 
-		socket.on('worker:stop', ({ identity }) => {
+		socket.on('worker:stop', ({ identity, time }) => {
+			console.log('worker:stop', { identity, time });
 			const worker = workers[identity];
 			if (!worker) {
 				return;
 			}
 			worker.state = 'stopped';
+      worker.stoppedAt = time;
 			worker.workflows.clear();
 			workers = workers;
 		});
