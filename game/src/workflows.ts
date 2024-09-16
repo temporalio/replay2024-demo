@@ -199,7 +199,7 @@ export async function RoundWorkflow({ config, teams, snakes }: RoundWorkflowInpu
       if (config.killWorkers) {
         const workerManager = workerManagers[appleId];
         signals.push(workerManager.signal(workerStopSignal));
-        events.push({ type: 'worker:stop', payload: { identity: appleId } });
+        events.push({ type: 'worker:stop', payload: { identity: appleId, time: new Date().getTime() } });
       } else {
         workersStarted.push(appleId);
       }
