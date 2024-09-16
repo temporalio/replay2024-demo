@@ -24,7 +24,7 @@ import { GameConfig, Game, Teams, Round, Snake, Snakes, Direction, Point, Segmen
 const ROUND_WF_ID = 'SnakeGameRound';
 const APPLE_POINTS = 10;
 const SNAKE_MOVES_BEFORE_CAN = 20;
-const SNAKE_WORKER_DOWN_TIME = '1 seconds';
+const SNAKE_WORKER_DOWN_TIME = '5 seconds';
 
 const { emit } = proxyLocalActivities<ReturnType<typeof buildGameActivities>>({
   startToCloseTimeout: '1 seconds',
@@ -303,7 +303,7 @@ export async function SnakeWorkerWorkflow({ roundId, identity }: SnakeWorkerWork
       await scope.run(() => snakeWorker(roundId, identity));
     } catch (err) {
       if (isCancellation(err)) {
-        // await sleep(SNAKE_WORKER_DOWN_TIME);
+        await sleep(SNAKE_WORKER_DOWN_TIME);
       } else {
         log.error('SnakeWorker failure, retrying', { error: err });
       }

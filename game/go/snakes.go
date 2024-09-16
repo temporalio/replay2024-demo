@@ -142,5 +142,5 @@ func (a *Activtities) SnakeWorker(ctx context.Context, roundId string, identity 
 		return err
 	}
 
-	return nil
+	return temporal.NewCanceledError()
 }
