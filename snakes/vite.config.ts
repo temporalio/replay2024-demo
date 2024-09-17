@@ -10,7 +10,7 @@ const TEMPORAL_TASK_QUEUE = 'game'
 
 const GAME_WORKFLOW_ID = 'SnakeGame';
 const ROUND_WORKFLOW_ID = 'SnakeGameRound';
-const INVITE_TIMEOUT = 10000;
+const INVITE_TIMEOUT = 30000;
 
 type SocketLobby = {
 	teams: Record<string, LobbyTeam>;
