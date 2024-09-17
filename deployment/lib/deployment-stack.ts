@@ -64,7 +64,7 @@ export class Replay2024DemoStack extends cdk.Stack {
     const gameUiContainer = uiTaskDefinition.addContainer('GameUiContainer', {
       image: ecs.ContainerImage.fromEcrRepository(
         ecr.Repository.fromRepositoryName(this, 'UiRepo', 'temporal-replay-demo-2024-game-ui'),
-        'v1.6.tideman'  // Use 'latest' tag or your specific image tag
+        'v1.7.qrchange'  // Use 'latest' tag or your specific image tag
       ),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'game-ui' }),
       environment: {
@@ -125,7 +125,7 @@ export class Replay2024DemoStack extends cdk.Stack {
     const gameWorkerContainer = workerTaskDefinition.addContainer('GameWorkerContainer', {
       image: ecs.ContainerImage.fromEcrRepository(
         ecr.Repository.fromRepositoryName(this, 'WorkerRepo', 'temporal-replay-demo-2024-game-worker'),
-        'v1.4.snake10secsdown'  // Use 'latest' tag or your specific image tag
+        'v1.7.qrchange'  // Use 'latest' tag or your specific image tag
       ),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'game-worker' }),
       environment: {
