@@ -4,7 +4,6 @@
 	import type { Lobby, Snake, Direction } from '$lib/snake/types';
 	import playerId from '$lib/stores/playerId';
 
-	$: ({ id: workflowId } = $page.params);
 	const { team } = $page.params;
 
 	// Allow overriding playerId in the URL for testing
@@ -15,15 +14,10 @@
 	});
 	const gameSocket = io();
 
-	let players = 0;
 	let invite: ((id: string) => void) | undefined;
 	let accepted = false;
 	let playing = false;
 	let snake: Snake | undefined;
-
-	lobbySocket.on('lobby', ({ lobby }: { lobby: Lobby }) => {
-		players = lobby.teams[team]?.players;
-	});
 
 	lobbySocket.on('roundInvite', (cb) => {
 		snake = undefined;
@@ -118,17 +112,13 @@
 			>
 				{#if invite}
 					<div class="invited">
-						<button class="retro" on:click={acceptInvite}>Accept Invite</button>
+						<button class="retro" on:click={acceptInvite}>Start Game</button>
 					</div>
 				{:else if accepted}
 					<div class="invite-accepted">
-						<p>Invite Accepted</p>
-						<p>Please wait...</p>
+						<p>Please wait for other players...</p>
 					</div>
 				{/if}
-				<div class="player-count" id="players">
-					Players: {players}
-				</div>
 			</div>
 		</div>
 	</section>
