@@ -12,11 +12,12 @@
 		const config = { ...GAME_CONFIG };
 		if (practise) {
 			config.killWorkers = false;
-			config.roundDuration = 60;
-		}
-
-		if (demo) {
-			config.killWorkers = false;
+			config.roundDuration = 45;
+		} else if (demo) {
+			config.roundDuration = 90;
+			config.killWorkers = false;	
+		} else {
+			config.roundDuration = 90;
 		}
 
 		loading = true;

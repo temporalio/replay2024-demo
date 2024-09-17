@@ -61,6 +61,8 @@
 		});
 
 		socket.on('task:completed', ({ identity, snakeId, time }) => {
+			roundInProgress = true;
+
 			for (const worker of Object.values(workers)) {
 				worker.workflows.delete(snakeId);
 			}
