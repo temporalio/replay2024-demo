@@ -304,7 +304,7 @@
 		<h2 class="retro">Waiting for players...</h2>
 	{:else if roundOver}
 		<h2 class="retro">Round Over</h2>
-		<p class="retro"><a class="text-white" href={`/SnakeGame/lobby`}>&larr; Back to Lobby</a></p>
+		<p class="retro"><a class="text-white" href="/">&larr; Back home</a></p>
 	{/if}
 	{#if roundLoading}
 		<h2 class="retro">Loading...</h2>
