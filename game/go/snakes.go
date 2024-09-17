@@ -25,7 +25,7 @@ const (
 	SnakeChangeDirectionSignalName = "snakeChangeDirection"
 	SnakeMoveSignalName            = "snakeMove"
 	WorkerStartedSignalName        = "workerStarted"
-	SnakeMovesBeforeCAN            = 20
+	SnakeMovesBeforeCAN            = 50
 )
 
 type SnakeMoveSignal struct {
