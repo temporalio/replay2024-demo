@@ -12,7 +12,6 @@
 	const lobbySocket = io("/lobby");
 
 	let players: Record<string, number> = {};
-	let scores: Record<string, number> = {};
 	let baseURL = '';
 
 	const startRound = () => {
@@ -22,7 +21,6 @@
 	lobbySocket.on('lobby', ({ lobby }: { lobby: Lobby }) => {
 		for (const team of GAME_CONFIG.teamNames) {
 			players[team] = lobby.teams[team]?.players || 0;
-			// scores[team] = lobby.teams[team]?.score || 0;
 		}
 	});
 
@@ -44,9 +42,13 @@
 	</div>
 	<div class="flex flex-col md:flex-row gap-16 justify-center px-8">
 		{#each GAME_CONFIG.teamNames as team}
-			<div class="border-{team}-500 border-4 rounded-xl p-4 text-white">
+			<div class="border-4 rounded-xl p-4 text-white"
+				class:border-red-500={team === 'red'}
+				class:border-blue-500={team === 'blue'}
+				class:border-orange-500={team === 'orange'}
+				>
 				<QR
-					data="{baseURL}/{workflowId}/team/{team}"
+					data="{baseURL}/team/{team}"
 					moduleFill="{team}"
 					anchorOuterFill="{team}"
 					anchorInnerFill="{team}"
@@ -57,14 +59,11 @@
 						class="text-2xl font-bold"
 						class:text-red-600={team === 'red'}
 						class:text-blue-600={team === 'blue'}
-						class:text-orange-500={team === 'orange'}
-						href="{baseURL}/{workflowId}/team/{team}">{team.toUpperCase()} TEAM</a>
+						class:text-orange-600={team === 'orange'}
+						href="{baseURL}/team/{team}">{team.toUpperCase()} TEAM</a>
 					<div class="text-xl" id="{team}-players">
 						Players: {players[team]}
 					</div>
-					<!-- <div class="text-xl" id="{team}-score">
-						Score: {scores[team]}
-					</div> -->
 				</div>
 			</div>
 		{/each}
