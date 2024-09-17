@@ -9,13 +9,13 @@
 	const beginGame = async ({ demo, practise }: { demo: Boolean, practise: Boolean }) => {
 		const socket = io();
 
-		const config = GAME_CONFIG;
+		const config = { ...GAME_CONFIG };
 		if (practise) {
 			config.killWorkers = false;
 			config.roundDuration = 30;
 		}
 
-		loading = true
+		loading = true;
 		const finish = await socket.emitWithAck('gameFinish');
 		if (finish.error) {
 			alert('Failed to stop game');
