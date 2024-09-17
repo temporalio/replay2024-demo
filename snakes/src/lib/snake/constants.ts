@@ -6,7 +6,7 @@ export const LENGTH = 6;
 export const MARGIN = 60;
 export const SLOWEST = 120;
 export const FASTEST = 30;
-export const GAME_CONFIG: GameConfig = {
+export const GAME_CONFIG: Readonly<GameConfig> = {
   width: 25,
   height: 25,
   roundDuration: 60,

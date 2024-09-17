@@ -42,18 +42,19 @@
 	</div>
 	<div class="flex flex-col md:flex-row gap-16 justify-center px-8">
 		{#each GAME_CONFIG.teamNames as team}
-			<div class="border-4 rounded-xl p-4 text-white"
+			<div class="border-4 rounded-xl p-4 text-white flex-1"
 				class:border-red-500={team === 'red'}
 				class:border-blue-500={team === 'blue'}
 				class:border-orange-500={team === 'orange'}
 				>
-				<QR
+				<!-- Remove the QR codes for the Replay demo -->
+				<!-- <QR
 					data="{baseURL}/team/{team}"
 					moduleFill="{team}"
 					anchorOuterFill="{team}"
 					anchorInnerFill="{team}"
 					width="100%"
-				/>
+				/> -->
 				<div class="text-center">
 					<a 
 						class="text-2xl font-bold"
