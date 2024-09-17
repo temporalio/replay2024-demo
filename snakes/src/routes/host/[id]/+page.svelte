@@ -4,6 +4,7 @@
 	import { page } from '$app/stores';
 
 	let online = false;
+	let roundInProgress = false;
 
 	let socket: Socket;
 	type WorkerState = 'running' | 'stopped';
@@ -41,13 +42,21 @@
 			online = false;
 		});
 
+		socket.on('roundStarted', () => {
+			roundInProgress = true;
+		});
+
+		socket.on('roundFinished', () => {
+			roundInProgress = false;
+		});
+
 		socket.on('worker:start', ({ identity }) => {
 			const worker = workers[identity];
 			if (!worker) {
 				return;
 			}
 			worker.state = 'running';
-      worker.stoppedAt = 0;
+			worker.stoppedAt = 0;
 			workers = workers;
 		});
 
@@ -60,11 +69,11 @@
 			if (!worker) {
 				return;
 			}
-      if (time - worker.stoppedAt < 1000) {
-        return;
-      }
+			if (time - worker.stoppedAt < 1000) {
+				return;
+			}
 			worker.state = 'running';
-      worker.stoppedAt = 0;
+			worker.stoppedAt = 0;
 			worker.workflows.add(snakeId);
 			workers = workers;
 		});
@@ -82,7 +91,7 @@
 				return;
 			}
 			worker.state = 'stopped';
-      worker.stoppedAt = time;
+			worker.stoppedAt = time;
 			worker.workflows.clear();
 			workers = workers;
 		});
@@ -90,21 +99,26 @@
 </script>
 
 <section class="flex gap-2">
-	{#each workerIds as workerId}
-		{@const worker = workers[workerId]}
-		<div
-			class="worker flex flex-auto items-center justify-center w-32 {online &&
-			worker.state == 'running'
-				? 'online'
-				: 'offline'}"
-		>
-			{#if online && worker.state == 'running'}
-				{worker.workflows.size > 0 ? '🐍'.repeat(worker.workflows.size) : '😴'}
-			{:else}
-				☠️
-			{/if}
-		</div>
-	{/each}
+	{#if !roundInProgress}
+		<div class="flex flex-auto w-32 noround" />
+		<div class="flex flex-auto w-32 noround" />
+	{:else}
+		{#each workerIds as workerId}
+			{@const worker = workers[workerId]}
+			<div
+				class="worker flex flex-auto items-center justify-center w-32 {online &&
+				worker.state == 'running'
+					? 'online'
+					: 'offline'}"
+			>
+				{#if online && worker.state == 'running'}
+					{worker.workflows.size > 0 ? '🐍'.repeat(worker.workflows.size) : '😴'}
+				{:else}
+					☠️
+				{/if}
+			</div>
+		{/each}
+	{/if}
 </section>
 
 <style lang="postcss">
@@ -126,5 +140,9 @@
 
 	.offline {
 		background-color: red;
+	}
+
+	.noround {
+		background-color: #222;
 	}
 </style>
