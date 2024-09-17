@@ -42,7 +42,7 @@
 			online = false;
 		});
 
-		socket.on('roundStart', () => {
+		socket.on('roundStarted', () => {
 			roundInProgress = true;
 		});
 
