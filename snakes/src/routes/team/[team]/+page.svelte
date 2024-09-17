@@ -102,24 +102,27 @@
 	</style>
 {:else}
 	<section>
-		<h1 class="retro">{team.toUpperCase()} Lobby</h1>
-		<div class="flex flex-col gap-4 justify-center">
-			<div
-				class="border-4 rounded-xl p-24 text-white text-center"
-				class:border-red-600={team === 'red'}
-				class:border-blue-600={team === 'blue'}
-				class:border-orange-500={team === 'orange'}
-			>
-				{#if invite}
-					<div class="invited">
-						<button class="retro" on:click={acceptInvite}>Start Game</button>
-					</div>
-				{:else if accepted}
-					<div class="invite-accepted">
-						<p>Please wait for other players...</p>
-					</div>
-				{/if}
-			</div>
+		<div class="border-4 rounded-xl p-4 text-white text-center"
+			class:border-red-600={team === 'red'}
+			class:border-blue-600={team === 'blue'}
+			class:border-orange-500={team === 'orange'}
+		>
+			<h1 class="retro">{team.toUpperCase()} Lobby</h1>
+		</div>
+		<div class="justify-center p-4 text-center">
+			{#if invite}
+				<div>
+					<button class="retro" on:click={acceptInvite}>Start Game</button>
+				</div>
+			{:else if accepted}
+				<div class="retro" style="font-size: 1em">
+					<p>Please wait for other players...</p>
+				</div>
+			{:else}
+				<div class="retro" style="font-size: 1em">
+					<p>Waiting for game to start...</p>
+				</div>
+			{/if}
 		</div>
 	</section>
 {/if}
