@@ -78,7 +78,13 @@ func SnakeWorkflow(ctx workflow.Context, input *SnakeWorkflowInput) error {
 
 		moves++
 		if moves > SnakeMovesBeforeCAN {
-			return workflow.NewContinueAsNewError(ctx, SnakeWorkflow, input)
+			return workflow.NewContinueAsNewError(ctx, SnakeWorkflow, SnakeWorkflowInput{
+				RoundId:     input.RoundId,
+				Id:          input.Id,
+				Direction:   direction,
+				NomsPerMove: input.NomsPerMove,
+				NomDuration: input.NomDuration,
+			})
 		}
 	}
 
