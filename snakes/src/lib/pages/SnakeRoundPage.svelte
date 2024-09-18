@@ -20,6 +20,7 @@
 	let waitingForPlayers = false;
 	let roundLoading = false;
 	let roundOver = false;
+	let shuttingDown = false;
 
 	let scores: Record<string, number> = {};
 	let timeLeft = 0;
@@ -125,6 +126,14 @@
 		timeLeft -= 1;
 	};
 
+	const handleKeydown = (event: KeyboardEvent) => {
+		if (event.key == "Escape") {
+			shuttingDown = true;
+			roundOver = true;
+			socket.emitWithAck('gameFinish');
+		}
+	}
+
 	onMount(async () => {
 		socket = io();
 		lobbySocket = io('/lobby');
@@ -152,7 +161,7 @@
 
 		socket.on('roundFinished', ({ round }: { round: Round }) => {
 			finishRound(round);
-			if (isDemo) {
+			if (isDemo && !shuttingDown) {
 				startNewDemoRound();
 			}
 		});
@@ -298,13 +307,13 @@
 </script>
 
 <div class="flex flex-col items-center justify-center z-20">
-	{#if isDemo}
+	{#if roundOver}
+		<h2 class="retro">Round Over</h2>
+		<p class="retro"><a class="text-white" href="/">&larr; Back home</a></p>
+	{:else if isDemo}
 		<h2 class="retro">Demo</h2>
 	{:else if waitingForPlayers}
 		<h2 class="retro">Waiting for players...</h2>
-	{:else if roundOver}
-		<h2 class="retro">Round Over</h2>
-		<p class="retro"><a class="text-white" href="/">&larr; Back home</a></p>
 	{/if}
 	{#if roundLoading}
 		<h2 class="retro">Loading...</h2>
@@ -343,6 +352,8 @@
 		{/each}
 	</div>
 {/if}
+
+<svelte:window on:keydown={handleKeydown} />
 
 <style lang="postcss">
 	#game {
