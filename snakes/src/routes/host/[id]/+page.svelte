@@ -5,6 +5,8 @@
 
 	let online = false;
 	let roundInProgress = false;
+	let requestFullscreen = $page.url.searchParams.get('fullscreen') == 'true';
+	let fullScreen = false;
 
 	let socket: Socket;
 	type WorkerState = 'running' | 'stopped';
@@ -100,28 +102,40 @@
 	});
 </script>
 
-<section class="flex gap-2">
-	{#if !roundInProgress}
-		<div class="flex flex-auto w-32 noround" />
-		<div class="flex flex-auto w-32 noround" />
-	{:else}
-		{#each workerIds as workerId}
-			{@const worker = workers[workerId]}
-			<div
-				class="worker flex flex-auto items-center justify-center w-32 {online &&
-				worker.state == 'running'
-					? 'online'
-					: 'offline'}"
-			>
-				{#if online && worker.state == 'running'}
-					{worker.workflows.size > 0 ? '🐍'.repeat(worker.workflows.size) : '😴'}
-				{:else}
-					☠️
-				{/if}
-			</div>
-		{/each}
-	{/if}
-</section>
+{#if requestFullscreen && !fullScreen}
+	<div>
+		<button
+			class="retro"
+			on:click={() => {
+				document.querySelector('body').requestFullscreen();
+				fullScreen = true;
+			}}>Full Screen</button
+		>
+	</div>
+{:else}
+	<section class="flex gap-2">
+		{#if !roundInProgress}
+			<div class="flex flex-auto w-32 noround" />
+			<div class="flex flex-auto w-32 noround" />
+		{:else}
+			{#each workerIds as workerId}
+				{@const worker = workers[workerId]}
+				<div
+					class="worker flex flex-auto items-center justify-center w-32 {online &&
+					worker.state == 'running'
+						? 'online'
+						: 'offline'}"
+				>
+					{#if online && worker.state == 'running'}
+						{worker.workflows.size > 0 ? '🐍'.repeat(worker.workflows.size) : '😴'}
+					{:else}
+						☠️
+					{/if}
+				</div>
+			{/each}
+		{/if}
+	</section>
+{/if}
 
 <style lang="postcss">
 	section {
