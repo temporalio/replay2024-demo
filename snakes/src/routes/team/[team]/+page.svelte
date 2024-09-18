@@ -69,7 +69,7 @@
 </svelte:head>
 
 {#if snake && playing}
-	<div class="flex flex-col items-center gap-4 grow pt-4">
+	<div class="flex flex-col items-center gap-4 grow justify-center">
 		<div class="absolute top-2 right-2">
 			<div
 				class="w-10 h-10 rounded border-2 relative"
