@@ -176,3 +176,11 @@ button:hover:before {
 button:active {
 	transform: scale(0.95);
 }
+
+.built-by {
+	color: #ffffff;
+	font-family: 'VT323', 'Courier New', monospace; /* Retro computer font */
+	font-size: .75rem;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+}
