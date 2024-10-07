@@ -16,7 +16,7 @@
 		"@neoconfetti/svelte": "^2.0.0",
 		"@svelte-put/qr": "^1.2.1",
 		"@sveltejs/adapter-auto": "^3.0.0",
-		"@sveltejs/kit": "^2.0.0",
+		"@sveltejs/kit": "^2.5.23",
 		"@sveltejs/vite-plugin-svelte": "^3.0.0",
 		"@types/socket.io": "^3.0.2",
 		"@types/socket.io-client": "^3.0.0",
