@@ -8,5 +8,6 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+COPY .svelte-kit .svelte-kit
 
 CMD ["npm", "run", "host"]
