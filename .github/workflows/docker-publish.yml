@@ -32,14 +32,14 @@ jobs:
       - name: Build and push core worker Docker image
         uses: docker/build-push-action@v5
         with:
-          context: game
-          file: Dockerfile.core
+          context: ./game
+          file: ./game/Dockerfile.core
           platforms: linux/amd64,linux/arm64
           tags: ${{ env.REGISTRY }}/temporalio/snakes-core-worker:latest
 
       - name: Build and push UI Docker image
         uses: docker/build-push-action@v5
         with:
-          context: snakes
+          context: ./snakes
           platforms: linux/amd64,linux/arm64
           tags: ${{ env.REGISTRY }}/temporalio/snakes-ui:latest
