@@ -1,0 +1,21 @@
+FROM golang:1.22.2 AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download
+
+COPY . .
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -v -o /usr/local/bin/snake-worker ./worker
+
+FROM scratch AS snake-worker
+
+COPY --from=builder /usr/local/bin/snake-worker /usr/local/bin/snake-worker
+
+ENTRYPOINT ["/usr/local/bin/snake-worker"]
+
