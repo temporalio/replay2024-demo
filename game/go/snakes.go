@@ -97,15 +97,16 @@ type WorkerStartedSignal struct {
 	Identity string `json:"identity"`
 }
 
-type Activtities struct {
+type Activities struct {
 	Client client.Client
 }
 
-var a Activtities
-
-func (a *Activtities) SnakeWorker(ctx context.Context, roundId string, identity string) error {
+// SnakeWorker activity implementation
+func (a *Activities) SnakeWorker(ctx context.Context, roundId string, identity string) error {
 	heartbeatCtx, cancelHeartbeat := context.WithCancel(ctx)
 	defer cancelHeartbeat()
+
+	// Start a heartbeat goroutine to keep the worker alive
 	go func() {
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
@@ -119,24 +120,26 @@ func (a *Activtities) SnakeWorker(ctx context.Context, roundId string, identity 
 		}
 	}()
 
+	// Create a new worker for the "snakes" task queue
 	w := worker.New(a.Client, "snakes", worker.Options{
 		Identity:                     identity,
 		StickyScheduleToStartTimeout: time.Second,
 		WorkerStopTimeout:            200 * time.Millisecond,
 	})
 
-	w.RegisterWorkflowWithOptions(
-		SnakeWorkflow,
-		workflow.RegisterOptions{Name: "snakeWorkflow"},
-	)
+	// Register the SnakeWorkflow with the worker
+	w.RegisterWorkflowWithOptions(SnakeWorkflow, workflow.RegisterOptions{Name: "snakeWorkflow"})
 
+	// Send a signal to the workflow
 	err := a.Client.SignalWorkflow(ctx, roundId, "", WorkerStartedSignalName, &WorkerStartedSignal{Identity: identity})
 	if err != nil {
 		if _, ok := err.(*serviceerror.NotFound); ok {
-			return nil
+			return nil // Gracefully handle workflow not found
 		}
+		return err
 	}
 
+	// Run the worker
 	cancelCh := make(chan interface{})
 	go func() {
 		<-ctx.Done()
