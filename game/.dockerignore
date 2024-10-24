@@ -1,7 +1,6 @@
 .dockerignore
 .env
 .gitignore
-.svelte-kit
-build
-Dockerfile
+Dockerfile*
+go
 node-modules
