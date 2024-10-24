@@ -37,6 +37,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ env.REGISTRY }}/temporalio/snakes-core-worker:latest
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push snake worker Docker image
         uses: docker/build-push-action@v5
@@ -46,7 +49,10 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ env.REGISTRY }}/temporalio/snakes-worker:latest
           push: true
-  
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and push UI Docker image
         uses: docker/build-push-action@v5
         with:
@@ -54,3 +60,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ env.REGISTRY }}/temporalio/snakes-ui:latest
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          github-token: ${{ secrets.GITHUB_TOKEN }}
