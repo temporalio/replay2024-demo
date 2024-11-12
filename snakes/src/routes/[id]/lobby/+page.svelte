@@ -47,14 +47,13 @@
 				class:border-blue-500={team === 'blue'}
 				class:border-orange-500={team === 'orange'}
 				>
-				<!-- Remove the QR codes for the Replay demo -->
-				<!-- <QR
+				<QR
 					data="{baseURL}/team/{team}"
 					moduleFill="{team}"
 					anchorOuterFill="{team}"
 					anchorInnerFill="{team}"
 					width="100%"
-				/> -->
+				/>
 				<div class="text-center">
 					<a 
 						class="text-2xl font-bold"
