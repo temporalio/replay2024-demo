@@ -66,6 +66,11 @@
 
 <svelte:head>
 	<title>{team.toUpperCase()} Lobby</title>
+	<style>
+		body {
+			overflow: hidden;
+		}
+	</style>
 </svelte:head>
 
 {#if snake && playing}
