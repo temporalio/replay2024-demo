@@ -69,6 +69,7 @@
 	<style>
 		body {
 			overflow: hidden;
+			touch-action: none;
 		}
 	</style>
 </svelte:head>
