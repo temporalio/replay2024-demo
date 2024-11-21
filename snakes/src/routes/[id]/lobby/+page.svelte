@@ -36,13 +36,11 @@
 
 <section class="w-screen">
 	<div class="flex flex-col md:flex-row gap-16 justify-center px-8">
-		<div class="flex justify-center items-center flex-col">
-			<h1 class="retro">Lobby</h1>
-		</div>
+		<h1 class="retro">Lobby</h1>
 	</div>
 	<div class="flex flex-col md:flex-row gap-16 justify-center px-8">
 		{#each GAME_CONFIG.teamNames as team}
-			<div class="border-4 rounded-xl p-4 text-white flex-1"
+			<div class="border-4 rounded-xl p-4 text-white flex-1 max-w-[30vw]"
 				class:border-red-500={team === 'red'}
 				class:border-blue-500={team === 'blue'}
 				class:border-orange-500={team === 'orange'}
