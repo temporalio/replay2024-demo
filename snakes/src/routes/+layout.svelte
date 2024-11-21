@@ -12,7 +12,6 @@
 	main {
 		flex: 1;
 		display: flex;
-		padding: 1rem;
 		margin: 0 auto;
 		box-sizing: border-box;
 		overflow: hidden;
