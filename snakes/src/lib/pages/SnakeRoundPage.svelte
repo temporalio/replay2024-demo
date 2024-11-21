@@ -19,6 +19,7 @@
 
 	let waitingForPlayers = false;
 	let roundLoading = false;
+	let roundMenu = false;
 	let roundOver = false;
 	let shuttingDown = false;
 
@@ -84,6 +85,7 @@
 	};
 
 	const finishRound = (_round: Round) => {
+		roundMenu = false;
 		roundOver = true;
 
 		clearInterval(timerInterval);
@@ -126,11 +128,15 @@
 		timeLeft -= 1;
 	};
 
+	const abortRound = () => {
+		shuttingDown = true;
+		roundOver = true;
+		socket.emitWithAck('gameFinish');
+	};
+
 	const handleKeydown = (event: KeyboardEvent) => {
 		if (event.key == "Escape") {
-			shuttingDown = true;
-			roundOver = true;
-			socket.emitWithAck('gameFinish');
+			abortRound();
 		}
 	}
 
@@ -307,22 +313,22 @@
 </script>
 
 <div class="flex flex-col items-center justify-center z-20">
-	{#if roundOver}
+	{#if roundLoading}
+		<h2 class="retro">Loading...</h2>
+	{:else if waitingForPlayers}
+		<h2 class="retro">Waiting for players...</h2>
+	{:else if roundMenu}
+		<button class="retro" on:click={abortRound}>Abort Round</button>
+	{:else if roundOver}
 		<h2 class="retro">Round Over</h2>
 		<p class="retro"><a class="text-white" href="/">&larr; Back home</a></p>
 	{:else if isDemo}
 		<h2 class="retro">Demo</h2>
-	{:else if waitingForPlayers}
-		<h2 class="retro">Waiting for players...</h2>
-	{/if}
-	{#if roundLoading}
-		<h2 class="retro">Loading...</h2>
 	{/if}
 </div>
-<div id="game">
-	<canvas id="board" bind:this={boardCanvas} />
+<div id="game" role="button" aria-label="Toggle round menu" tabindex=0 on:click={() => roundMenu = !roundMenu}>
+	<canvas id="board" bind:this={boardCanvas}/>
 	<canvas bind:this={appleCanvas} />
-	<!-- TODO: Make this dynamic based on player count -->
 	{#each GAME_CONFIG.teamNames as team}
 		{#each SNAKE_NUMBERS as i}
 			<canvas bind:this={snakeCanvases[`${team}-${i}`]} />
@@ -330,7 +336,7 @@
 	{/each}
 </div>
 <div id="score">
-	<div class="retro" id="time">{timeLeft}</div>
+	<div class="retro" id="time" >{timeLeft}</div>
 	{#each GAME_CONFIG.teamNames as team}
 		<div class="retro" id={team}>{scores[team] || 0}</div>
 	{/each}
